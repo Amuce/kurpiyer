@@ -263,6 +263,11 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
       <p class="durum" id="beklemeDurum"></p>
       <p class="not" id="beklemeBilgi"></p>
     </div>
+    <div class="kutu gizli" id="baslatKutu">
+      <h2><span>Masa hazır</span><em id="baslatSayi"></em></h2>
+      <button class="dugme" id="oyunuBaslatBtn" style="margin:0">Oyunu Başlat</button>
+      <p class="not" id="baslatNot" style="margin-top:9px"></p>
+    </div>
     <div class="kutu gizli" id="botKutu">
       <h2><span>Test</span><em>tek başına dene</em></h2>
       <p class="not" style="margin:0 0 10px">Yanına yapay oyuncu oturt; kart çeker, hazır der, gerçek oyuncu gibi oynar.
@@ -387,8 +392,15 @@ function desteKur(){
   for(let i=dz.length-1;i>0;i--){const j=rast(i+1);[dz[i],dz[j]]=[dz[j],dz[i]];}
   return dz;
 }
-function rast(n){const s=Math.floor(256/n)*n,b=new Uint8Array(1);
-  while(true){crypto.getRandomValues(b);if(b[0]<s)return b[0]%n;}}
+function rast(n){
+  n=Math.floor(n);
+  if(!(n>0)) return 0;                       // rast(0) sonsuz döngüye girerdi
+  if(n>256) return Math.floor(Math.random()*n);
+  const s=Math.floor(256/n)*n,b=new Uint8Array(1);
+  let guvenlik=0;
+  while(guvenlik++<10000){crypto.getRandomValues(b);if(b[0]<s)return b[0]%n;}
+  return Math.floor(Math.random()*n);        // teorik kilitlenme kapısı
+}
 const sabitDeger = k => (k.r==='V'||k.r==='K'||k.r==='P') ? 10 : (k.r==='A' ? 0 : k.d);
 /* oyuncunun seçtiği as değerlerine göre toplam */
 function toplamHesap(kartlar, asSec){
@@ -552,7 +564,15 @@ function ciz(){
       : eksik>0 ? eksik+' kişi daha bekleniyor…' : 'Masa doldu, kurpiyer sayıyor…';
     $('beklemeBilgi').textContent='Bahis '+masa.bahis+' ₺ · hedef '+masa.hedef+' tur · '+masa.kisi+' kişilik masa.';
     $('botKutu').classList.toggle('gizli', !(sahipMi && eksik>0));
-    if(sahipMi && oyn.length>=masa.kisi && !sayimCalisiyor) geriSayimBaslat();
+    const hazirMi = oyn.length>=2;
+    $('baslatKutu').classList.toggle('gizli', !(sahipMi && hazirMi));
+    $('baslatSayi').textContent = oyn.length+' kişi oturdu';
+    $('baslatNot').textContent = eksik>0
+      ? 'Belirlediğin '+masa.kisi+' kişiden '+eksik+' tanesi henüz gelmedi. İstersen beklemeden '+
+        oyn.length+' kişiyle başlatabilirsin — masa o an kilitlenir, sonradan gelenler izleyici olur.'
+      : 'Herkes masada. Başlat dediğinde kurpiyer 3–2–1 sayıp eli dağıtır.';
+    if(!sahipMi) $('beklemeDurum').textContent = eksik>0
+      ? eksik+' kişi daha bekleniyor…' : 'Masa doldu — kurucunun başlatması bekleniyor.';
     return;
   }
 
@@ -598,7 +618,7 @@ function ciz(){
   $('kapatBtn').classList.toggle('gizli', !kurucu);
 
   if(masa.faz==='elSonu' && acik && acik.eller && sonPerdeEl!==masa.el){ sonPerdeEl=masa.el; perdeAc(); }
-  kalkanKontrol(); botKontrol();
+  kalkanKontrol(); botKontrol(); kurtarmaKontrol();
 }
 
 /* --- masa görseli --- */
@@ -678,6 +698,43 @@ $('kartAlBtn').addEventListener('click',()=>istek('al'));
 $('pasBtn').addEventListener('click',()=>istek('pas'));
 $('hazirBtn').addEventListener('click',()=>istek('hazir'));
 
+/* ---------- KURTARMA: kurucu sekmesi yenilenirse akış donmasın ----------
+   'sayim' ve 'bozuldu' fazları setTimeout zincirine bağlıydı; kurucu sayfayı
+   yenileyince o zincir kayboluyor ve masa sonsuza kadar takılı kalıyordu. */
+let kurtarmaCalisiyor=false;
+async function kurtarmaKontrol(){
+  if(!sahipMi||!masa||kurtarmaCalisiyor) return;
+  const f=masa.faz;
+  if(f!=='sayim'&&f!=='bozuldu'&&f!=='el') return;
+  kurtarmaCalisiyor=true;
+  try{
+    if(f==='sayim' && !sayimCalisiyor){
+      const oyn=(await get(yol('oyuncular'))).val()||{};
+      const n=Object.values(oyn).filter(o=>!o.izleyici).length;
+      if(n>=2){ sistem('Kurpiyer geri döndü, el dağıtılıyor.'); await eliDagit(); }
+      else await update(yol('masa'),{faz:'bekleme'});
+      return;
+    }
+    if(f==='bozuldu'){
+      const ts=(masa.bozuk&&masa.bozuk.ts)||0;
+      if(Date.now()-ts < 4000) return;              // normal akış zaten dağıtacak
+      const oyn=(await get(yol('oyuncular'))).val()||{};
+      const n=Object.values(oyn).filter(o=>!o.izleyici).length;
+      if(n>=2) await eliDagit(); else await update(yol('masa'),{faz:'bitti'});
+      return;
+    }
+    if(f==='el'){
+      const durum=(await get(yol('acik','durum'))).val();
+      if(!durum) return;
+      const oyn=(await get(yol('oyuncular'))).val()||{};
+      const liste=Object.entries(oyn).filter(([,o])=>!o.izleyici).map(([u])=>u);
+      if(!liste.length) return;
+      if(liste.every(u=>durum[u]&&durum[u].hazir)){ await eliAc(); return; }   // herkes hazır ama el açılmamış
+      if(!masa.sira || !oyn[masa.sira]) await siraIlerlet();                    // sıra boşta kalmış
+    }
+  } finally { kurtarmaCalisiyor=false; }
+}
+
 /* ---------- SIRA SÜRESİ ---------- */
 const SURE_MS=45000, UYARI_MS=5000;
 let sayacDonguu=null, zamanAsimiIsleniyor=false, ustUsteAsim={};
@@ -686,7 +743,8 @@ function sayacCiz(){
   if(!masa || masa.faz!=='el' || !masa.sira || !masa.sonTarih){
     $('sayacKutu').classList.add('gizli'); return;
   }
-  const kalan=Math.max(0, masa.sonTarih-Date.now());
+  // cihaz saatleri farklı olabilir: kalan süre 0..45 sn aralığına sıkıştırılır
+  const kalan=Math.min(SURE_MS, Math.max(0, masa.sonTarih-Date.now()));
   const sn=Math.ceil(kalan/1000);
   const benim = masa.sira===uid;
   $('sayacKutu').classList.remove('gizli');
@@ -723,7 +781,7 @@ async function eliBoz(sebep){
   const oyn=(await get(yol('oyuncular'))).val()||{};
   const kalanlar=Object.entries(oyn).filter(([,o])=>!o.izleyici);
   // el iptal: para el değiştirmez, tur sayacı artmaz
-  await set(yol('eller'),null).catch(()=>{});
+  for(const [u] of kalanlar) await set(yol('eller',u),null).catch(()=>{});
   await set(yol('acik'),null).catch(()=>{});
   await update(yol('masa'),{faz:'bozuldu',sira:null,sonTarih:null,
     bozuk:{sebep,ts:Date.now()}, sonMesaj:'El bozuldu — '+sebep});
@@ -743,6 +801,15 @@ function enIyiToplam(kartlar){
   while(t>21&&as>0){t-=10;as--;}
   return t;
 }
+$('oyunuBaslatBtn').addEventListener('click',async()=>{
+  if(!sahipMi||sayimCalisiyor) return;
+  const oyn=(await get(yol('oyuncular'))).val()||{};
+  const n=Object.values(oyn).filter(o=>!o.izleyici).length;
+  if(n<2){ $('beklemeDurum').textContent='En az 2 kişi gerekiyor.'; return; }
+  $('oyunuBaslatBtn').disabled=true;
+  await update(yol('masa'),{kisi:n});          // masa oturanlara kilitlenir
+  geriSayimBaslat();
+});
 $('botEkleBtn').addEventListener('click',async()=>{
   if(!sahipMi) return;
   const oyn=(await get(yol('oyuncular'))).val()||{};
@@ -852,11 +919,24 @@ async function hepsiHazirMi(){
 }
 
 async function eliAc(){
+  try{ await eliAcIc(); }
+  catch(e){
+    console.error('eliAc hatası',e);
+    sistem('Kurpiyer eli açamadı ('+(e.code||e.message)+'). El bozuluyor.');
+    await eliBoz('Teknik aksaklık.');
+  }
+}
+async function eliAcIc(){
   const m=(await get(yol('masa'))).val();
   const oyn=(await get(yol('oyuncular'))).val()||{};
-  const tum=(await get(yol('eller'))).val()||{};
   const liste=Object.entries(oyn).filter(([,o])=>!o.izleyici).map(([u])=>u);
-
+  // NOT: 'eller' üst düğümü OKUNAMAZ — kural yalnızca eller/{oyuncu} seviyesinde tanımlı.
+  // Üst düğümden okumak PERMISSION_DENIED verir ve el hiç açılmaz. Tek tek okunur.
+  const tum={};
+  for(const u of liste){
+    try{ tum[u]=(await get(yol('eller',u))).val()||{kartlar:[]}; }
+    catch(e){ tum[u]={kartlar:[]}; }
+  }
   const acikEller={};
   liste.forEach(u=>{
     const e=tum[u]||{kartlar:[]};
@@ -891,7 +971,15 @@ async function eliAc(){
   sistem(mesaj);
 }
 
+let dagitiliyor=false;
 async function eliDagit(){
+  if(dagitiliyor) return;
+  dagitiliyor=true;
+  try{ await eliDagitIc(); } finally { dagitiliyor=false; }
+}
+async function eliDagitIc(){
+  const m0=(await get(yol('masa'))).val();
+  if(!m0 || m0.faz==='el' || m0.faz==='bitti') return;   // zaten el var / masa bitmiş
   const oyn=(await get(yol('oyuncular'))).val()||{};
   const liste=Object.entries(oyn).filter(([,o])=>!o.izleyici).sort((a,b)=>a[1].sirasi-b[1].sirasi).map(([u])=>u);
   if(liste.length<2) return;
@@ -1019,7 +1107,9 @@ async function masayiKapat(){
   if(!sahipMi) return;
   if(!confirm('Masa herkes için kapansın mı? Bu işlem geri alınamaz.')) return;
   sistem('Kurucu masayı kapattı.');
-  for(const dal of ['istekler','eller','gizli','acik','sohbet','oyuncular','masa'])
+  const oyn=(await get(yol('oyuncular'))).val()||{};
+  for(const u of Object.keys(oyn)) await remove(yol('eller',u)).catch(()=>{});
+  for(const dal of ['istekler','gizli','acik','sohbet','oyuncular','masa'])
     await remove(yol(dal)).catch(()=>{});
   localStorage.removeItem('masa_oturum');
   kes(); location.reload();
