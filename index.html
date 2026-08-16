@@ -218,7 +218,7 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
       <h2 style="justify-content:center">Masaya dönülüyor</h2>
       <p class="not" id="yuklemeMetin" style="margin:0">Masana dönülüyor…</p>
       <button class="dugme gizli" id="yuklemeTekrar" style="margin-top:14px">Tekrar Dene</button>
-      <button class="dugme bos gizli" id="yuklemeVazgec" style="margin:0">Giriş ekranına dön</button>
+      <button class="dugme bos gizli" id="yuklemeVazgec" style="margin:0">Bağlantıyı Sıfırla ve Girişe Dön</button>
     </div>
   </div>
 
@@ -233,6 +233,7 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
       <input id="kodInput" maxlength="4" placeholder="ABCD" autocomplete="off">
       <button class="dugme yesil" id="katilBtn">Masaya Katıl</button>
       <p class="durum" id="girisDurum">Bağlanıyor…</p>
+      <button class="dugme bos gizli" id="girisSifirlaBtn" style="margin-bottom:11px">Bağlantı kurulamıyor — sıfırla ve tekrar dene</button>
       <p class="not">Masaya oturduktan sonra sayfayı yenilesen, uygulamadan çıksan ya da telefonun uykuya
         dalsa da yerin korunur — geri döndüğünde aynı koltuğa oturursun. Koltuğun ancak sen
         "Masadan kalk" dersen boşalır.</p>
@@ -487,19 +488,45 @@ if(FIREBASE_AYAR.apiKey.startsWith('BURAYA')){
   $('kurBtn').disabled = true; $('katilBtn').disabled = true;
   $('girisDurum').textContent = 'Firebase ayarı bekleniyor.';
 }
-let app,auth,db,uid=null;
+/* Safari'de (özellikle art arda birkaç kere yenilemeden sonra) Firebase Auth'un
+   kalıcılık için kullandığı IndexedDB bazen tıkanıp signInAnonymously hiç
+   sonuçlanmıyor: uid asla gelmiyor, "Bağlanıyor…" sonsuza kadar ekranda kalıyor
+   ve "Masa Kur"/"Masaya Katıl" hep "Bağlantı bekleniyor…" diyor. Tek çıkış yolu
+   kullanıcının Safari ayarlarından site verisini elle silmesiydi. Bu fonksiyon
+   aynı temizliği tek dokunuşla yapar: Firebase'in kendi yerel veritabanını silip
+   sayfayı yeniden yükler, böylece taze bir oturum kurulur. */
+async function baglantiSifirla(){
+  try{
+    await new Promise(res=>{
+      const istek=indexedDB.deleteDatabase('firebaseLocalStorageDb');
+      istek.onsuccess=istek.onerror=istek.onblocked=()=>res();
+    });
+  }catch(e){}
+  localStorage.removeItem('masa_oturum');
+  location.reload();
+}
+
+let app,auth,db,uid=null,girisZamanAsimi=null;
 try{
   app = initializeApp(FIREBASE_AYAR);
   auth = getAuth(app); db = getDatabase(app);
   signInAnonymously(auth).catch(e=>$('girisDurum').textContent='Bağlantı hatası: '+e.code);
+  girisZamanAsimi=setTimeout(()=>{
+    if(uid) return;
+    $('girisDurum').textContent='Bağlantı kurulamadı, normalden uzun sürüyor.';
+    $('girisSifirlaBtn').classList.remove('gizli');
+  },8000);
   onAuthStateChanged(auth,async u=>{
     if(!u) return;
     uid=u.uid;
+    clearTimeout(girisZamanAsimi);
+    $('girisSifirlaBtn').classList.add('gizli');
     if(FIREBASE_AYAR.apiKey.startsWith('BURAYA')) return;
     $('girisDurum').textContent='Hazır. ('+SURUM+')';
     oturumuGeriYukle();
   });
 }catch(e){}
+$('girisSifirlaBtn').addEventListener('click',gv(()=>baglantiSifirla()));
 
 const yol = (...p) => ref(db, ['odalar', oda, ...p].join('/'));
 function kodUret(){const h='ABCDEFGHJKLMNPRSTUVYZ23456789';let k='';for(let i=0;i<4;i++)k+=h[rast(h.length)];return k;}
@@ -536,7 +563,8 @@ function yuklemeBekletKur(){
   clearTimeout(yuklemeUyarisi);
   yuklemeUyarisi=setTimeout(()=>{
     if(masa) return;
-    $('yuklemeMetin').textContent='Masaya bağlanılamadı. Telefon uykudayken bağlantı kesilmiş olabilir.';
+    $('yuklemeMetin').textContent='Masaya bağlanılamadı. Telefon uykudayken bağlantı kesilmiş olabilir. '+
+      'Önce "Tekrar Dene"yi, olmazsa altındaki sıfırlama düğmesini dene.';
     $('yuklemeTekrar').classList.remove('gizli');
     $('yuklemeVazgec').classList.remove('gizli');
   },10000);
@@ -583,7 +611,7 @@ if(oturumKaydi&&oturumKaydi.oda){
   ekran('ekGiris');
 }
 $('yuklemeTekrar').addEventListener('click',gv(()=>location.reload()));
-$('yuklemeVazgec').addEventListener('click',gv(()=>{ localStorage.removeItem('masa_oturum'); location.reload(); }));
+$('yuklemeVazgec').addEventListener('click',gv(()=>baglantiSifirla()));
 
 /* ---------- giriş ---------- */
 document.querySelectorAll('#kisiSecim button,#bahisSecim button,#hedefSecim button').forEach(b=>
