@@ -211,7 +211,7 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 <div class="sarma">
 
   <div class="ust">
-    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v10.6</small></div>
+    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v11</small></div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="kod gizli" id="izleyiciRozet" title="izleyen kişi sayısı">👀 <b id="izleyiciSayi">0</b></div>
       <div class="kod gizli" id="kodRozet">ODA<b id="odaKodu">----</b></div>
@@ -323,6 +323,7 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 
     <div class="laflar" id="hizliMesajlar" style="justify-content:center">
       <button>⚡ Hızlı oyna</button><button>Noluyor yaw!</button><button>🔥 Masa hızlı!</button>
+      <button id="desteDegistirBtn" style="margin-left:auto">Deste Değiştir</button>
     </div>
 
     <div class="sayac-kutu gizli" id="sayacKutu">
@@ -459,9 +460,13 @@ const TIPLER = [{s:'♠️',k:0},{s:'♥️',k:1},{s:'♦️',k:1},{s:'♣️',k
 const RAKAMLAR = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
 
 /* ---------- kart mantığı ---------- */
-function desteKur(){
+/* adet: kaç standart 52'lik deste birlikte karılacak (1-8). Klasik masa
+   Blackjack'inde de kullanılan "shoe" mantığı — deste sayısı arttıkça
+   kart sayımı zorlaşır, oyuncular istedikleri an değiştirebilir. */
+function desteKur(adet){
+  adet=Math.max(1,Math.min(8,adet||1));
   const dz=[];
-  TIPLER.forEach(t=>RAKAMLAR.forEach((r,i)=>dz.push({r,t:t.s,k:t.k,d:i+2})));
+  for(let d=0;d<adet;d++) TIPLER.forEach(t=>RAKAMLAR.forEach((r,i)=>dz.push({r,t:t.s,k:t.k,d:i+2})));
   for(let i=dz.length-1;i>0;i--){const j=rast(i+1);[dz[i],dz[j]]=[dz[j],dz[i]];}
   return dz;
 }
@@ -821,13 +826,18 @@ function ciz(){
   masaCiz(oyn);
   elimCiz();
   skorCiz(oyn);
+  $('desteDegistirBtn').textContent = 'Deste Değiştir · '+(masa.desteSayisi||1)+'/8';
 
   const durum=(acik&&acik.durum)||{};
   const benimDurum=durum[uid]||{};
   const sıradaBenMi = masa.sira===uid && masa.faz==='el' && !izleyici && !benimDurum.hazir;
+  /* Kart al / pas geç / hazırım — üçü de artık SADECE sırası gelince
+     basılabilir (eskiden hazırım her an basılabiliyordu; bu, "sırası
+     olmayan biri hazır dedi" senaryosundan doğan karmaşıklığın ve buradan
+     kaynaklanan sıra hatalarının asıl kaynağıydı). */
   $('kartAlBtn').disabled=!sıradaBenMi || hamleBekliyor;
   $('pasBtn').disabled=!sıradaBenMi || hamleBekliyor;
-  $('hazirBtn').disabled=!(masa.faz==='el' && !izleyici && !benimDurum.hazir && (elim&&elim.kartlar)) || hamleBekliyor;
+  $('hazirBtn').disabled=!sıradaBenMi || !(elim&&elim.kartlar) || hamleBekliyor;
   $('atlandiKutu').classList.toggle('gizli', !(benimDurum.hazir && masa.faz==='el'));
   $('atlandiKutu').textContent = benimDurum.sonHamle==='sure'
     ? 'SÜREN DOLDU — OTOMATİK HAZIR SAYILDIN' : 'HAZIRSIN — DİĞER OYUNCULAR BEKLENİYOR';
@@ -1251,11 +1261,17 @@ async function botOyna(bid){
 }
 
 /* ---------- KURPİYER (masa sahibinin cihazı) ---------- */
-/* İstek, kart gerçekten verilip sıra tamamen ilerletilene (ya da işlenemeyeceği
-   kesinleşene) KADAR kuyruktan silinmez. Oyuncunun butonu da (bkz. istek() /
-   hamleBekliyor) ancak istek kuyruktan silinince tekrar açılıyor — yani kart
-   dağıtılmadan ikinci kez basılamaz, "kart gelmedi" ya da "iki kart geldi"
-   durumu oluşmaz. */
+/* TEMELDEN SADELEŞTİRME: eskiden "hazırım" sırası gelmeden de basılabiliyordu.
+   Bu, "sırası olmayan biri hazır dedi" senaryosunu doğuruyordu ve oradan
+   çıkan uç durumlar (sıranın yanlış kişiye kayması, kart al/pas ile çakışması)
+   tekrar tekrar hataya yol açıyordu. Artık üç komut da — kart al, pas geç,
+   hazırım — SADECE masa.sira o oyuncuyu gösterirken kabul ediliyor. Böylece
+   sıra ilerletme mantığı (siraIlerletIc) hiçbir zaman "sırası olmayan biri
+   araya girdi" durumunu düşünmek zorunda kalmıyor: her zaman aktif oyuncunun
+   KENDİ hamlesiyle çağrılıyor.
+   İstek, hamle tam işlenip sıra ilerletilene KADAR kuyruktan silinmez.
+   Oyuncunun butonu da (bkz. istek()/hamleBekliyor) ancak o zaman tekrar
+   açılıyor — kart dağıtılmadan ikinci kez basılamaz. */
 let isleniyor=false;
 async function istekleriIsle(hepsi){
   if(!kurpiyerMiyim()||!hepsi||isleniyor) return;
@@ -1267,18 +1283,21 @@ async function istekleriIsle(hepsi){
       try{
         const m=(await get(yol('masa'))).val();
         if(!m||m.faz!=='el') continue;
+        if(m.sira!==ist.uid) continue;        // sırası olmayan hiçbir komut kabul edilmez
         const dz=(await get(yol('acik','durum',ist.uid))).val()||{};
         if(dz.hazir) continue;
+        const baslangic=Date.now();           // "komuttan 1 sn sonra geçiş" burada başlar
         if(ist.tip==='hazir'){
           await update(yol('acik','durum',ist.uid),{hazir:true,sonHamle:'hazir'});
           sistem((oyuncular[ist.uid]?.ad||'')+' kartlarım hazır dedi.');
-          await siraIlerlet(ist.uid);
-          continue; }
-        if(m.sira!==ist.uid) continue;        // sırası olmayan al/pas isteği yok sayılır
-        if(ist.tip==='al') await kartVer(ist.uid);
-        else { await update(yol('acik','durum',ist.uid),{sonHamle:'pas'});
-          sistem((oyuncular[ist.uid]?.ad||'')+' bu turda kart almadı.'); }
-        await siraIlerlet();
+        } else if(ist.tip==='al'){
+          const verildi=await kartVerGuvenli(ist.uid);
+          if(!verildi){ sistem('Kart verilemedi — bağlantı sorunu, tekrar dene.'); continue; }
+        } else {
+          await update(yol('acik','durum',ist.uid),{sonHamle:'pas'});
+          sistem((oyuncular[ist.uid]?.ad||'')+' bu turda kart almadı.');
+        }
+        await siraIlerlet(baslangic);
       }catch(e){ console.error('istek işlenemedi',ist&&ist.tip,e); }
       finally{ await remove(yol('istekler',anahtar)).catch(()=>{}); }
     }
@@ -1301,6 +1320,24 @@ async function kartVerIc(hedef){
   await update(yol('acik','durum',hedef),{adet:el.kartlar.length,sonHamle:'al'});
   sistem((oyuncular[hedef]?.ad||'')+' yerden kart aldı.');
 }
+/* Kart verme, sunucuya YAZILDIĞI doğrulanana kadar (adet gerçekten arttı mı
+   diye kontrol ederek) en fazla 3 kez zorlanır. set()/update() sözü normalde
+   sunucu onayı gelmeden çözülmez, ama zayıf bağlantıda emin olmak için
+   yazımdan sonra da adet'i tekrar okuyup teyit ediyoruz. */
+async function kartVerGuvenli(hedef){
+  for(let deneme=1; deneme<=3; deneme++){
+    const oncekiAdet=((await get(yol('acik','durum',hedef))).val()||{}).adet||0;
+    try{
+      await kartVer(hedef);
+      return true;
+    }catch(e){
+      console.error('kart verme denemesi '+deneme+' başarısız',e);
+      const sonrakiAdet=((await get(yol('acik','durum',hedef))).val()||{}).adet||0;
+      if(sonrakiAdet>oncekiAdet) return true;   // aslında yazılmış, sadece onay client'a dönmemiş
+    }
+  }
+  return false;
+}
 /* deste biterse yeniden karılır ama bu elde dağıtılmış kartlar çıkarılır,
    yoksa masada aynı kart iki kişide görünebiliyordu */
 async function desteTazele(){
@@ -1310,29 +1347,27 @@ async function desteTazele(){
     const el=(await get(yol('eller',u))).val();
     for(const k of (el&&el.kartlar)||[]) kullanilan.add(k.r+k.t);
   }
-  const yeni=desteKur().filter(k=>!kullanilan.has(k.r+k.t));
+  const guncelMasa=(await get(yol('masa'))).val()||{};
+  const yeni=desteKur(guncelMasa.desteSayisi).filter(k=>!kullanilan.has(k.r+k.t));
   sistem('Deste bitti, yeniden karıldı.');
-  return yeni.length?yeni:desteKur();
+  return yeni.length?yeni:desteKur(guncelMasa.desteSayisi);
 }
 
-/* ESKİ HÂLİ: siraIlerlet birden çok yerden (istek işleme, ciz()'teki emniyet
-   kontrolü, kurtarmaKontrol, bot, zaman aşımı...) eş zamanlı çağrılabiliyordu;
-   kilitsiz olduğu için üst üste binen çağrılar masa.sira'yı art arda yazıp
-   "ışık hızında" ve bazen tutarsız sırayla değiştiriyordu — sırası gelen
-   oyuncunun "Kart Al" butonu bu yüzden valid/invalid arasında çırpınıyordu.
-   YENİ HÂLİ: bütün çağrılar tek bir kuyrukta sıraya giriyor (aynı deste kilidi
-   gibi) VE her sıra geçişinden önce ~1 sn bekleniyor, böylece kim ne yaptı
-   görülebiliyor ve buton durumu kısa aralıklarla oynamıyor. */
+/* Sıra ilerletme tek bir kuyrukta sıraya giriyor (aynı deste kilidi gibi) —
+   eş zamanlı çağrılar üst üste binip masa.sira'yı tutarsız sırayla
+   değiştirmesin diye. baslangicTs verilirse, o zamandan bu yana SIRA_GECIS_MS
+   kadar geçmemişse aradaki fark kadar beklenir (yani "komuttan 1 sn sonra
+   geçiş"); kart verme birkaç deneme aldıysa ve süre zaten dolmuşsa fazladan
+   beklenmez, hemen devam edilir. */
 const SIRA_GECIS_MS=1000;
 let siraKilidi=Promise.resolve();
-function siraIlerlet(ekstraHazir){
-  const p=siraKilidi.then(()=>siraIlerletIc(ekstraHazir),()=>siraIlerletIc(ekstraHazir));
+function siraIlerlet(baslangicTs){
+  const p=siraKilidi.then(()=>siraIlerletIc(baslangicTs),()=>siraIlerletIc(baslangicTs));
   siraKilidi=p.catch(()=>{});
   return p;
 }
-async function siraIlerletIc(ekstraHazir){
+async function siraIlerletIc(baslangicTs){
   const durum=(await get(yol('acik','durum'))).val()||{};
-  if(ekstraHazir){ durum[ekstraHazir]={...(durum[ekstraHazir]||{}),hazir:true}; }
   const m=(await get(yol('masa'))).val();
   if(!m||m.faz!=='el') return;
   const guncelOyn=(await get(yol('oyuncular'))).val()||{};
@@ -1340,17 +1375,6 @@ async function siraIlerletIc(ekstraHazir){
   if(!liste.length) return;
   const bekleyenler=liste.filter(u=>!durum[u]?.hazir);
   if(!bekleyenler.length){ await eliAc(); return; }
-  /* Sırası gelmemiş biri "elim hazır" dediğinde (ekstraHazir, aktif oyuncunun
-     kendisi değilse) sıraya HİÇ dokunma. ESKİ HÂLİ yalnızca "hedef hâlâ aktif
-     oyuncuyla aynı çıkarsa" durumunu koruyordu; ama 3+ oyunculu masada "sıradaki
-     hazır olmayanı bul" araması aktif oyuncu DIŞINDA başka bir bekleyen oyuncuyu
-     bulabiliyordu — o zaman kontrol atlanıp sıra, aktif oyuncu daha karar
-     vermeden başkasına ÇALINIYORDU (bildirilen hata tam olarak buydu: kullanıcı
-     hazır dedi ama kabul edilmemiş gibi göründü, çünkü sıra ondan başkasına
-     kaymıştı). Aktif oyuncu henüz hazır değilse (yukarıdaki bekleyenler
-     kontrolünden geçtiysek bu kesin), başkasının hazır demesi sıraya ASLA
-     dokunmamalı — bu yüzden hedefi hiç hesaplamadan burada duruyoruz. */
-  if(ekstraHazir && ekstraHazir!==m.sira) return;
   const simdiki=liste.indexOf(m.sira);
   let sonraki=null;
   for(let adim=1;adim<=liste.length;adim++){
@@ -1358,7 +1382,8 @@ async function siraIlerletIc(ekstraHazir){
     if(!durum[aday]?.hazir){sonraki=aday;break;}
   }
   const hedefUid=sonraki||bekleyenler[0];
-  if(hedefUid!==m.sira) await new Promise(r=>setTimeout(r,SIRA_GECIS_MS));   // oyuncular kimin ne yaptığını görebilsin
+  const gecen=baslangicTs?Date.now()-baslangicTs:0;
+  if(gecen<SIRA_GECIS_MS) await new Promise(r=>setTimeout(r,SIRA_GECIS_MS-gecen));
   // çevrimdışı oyuncu bütün masayı 45 sn bekletmesin
   const sure=(guncelOyn[hedefUid]&&guncelOyn[hedefUid].cevrimici===false)?KISA_SURE_MS:SURE_MS;
   await update(yol('masa'),{sira:hedefUid, sonTarih: Date.now()+sure});
@@ -1490,7 +1515,7 @@ async function eliDagitIc(){
     await update(yol('masa'),{faz:'bitti',sira:null,sonTarih:null,sonMesaj:'Masada yeterli oyuncu kalmadı.',devamOnay:null});
     return;
   }
-  const deste=desteKur(), durum={};
+  const deste=desteKur(m0.desteSayisi), durum={};
   for(const u of liste){
     await set(yol('eller',u),{kartlar:[deste.pop(),deste.pop()],asSec:{}});
     durum[u]={adet:2,hazir:false,sonHamle:null};
@@ -1571,12 +1596,22 @@ function yolla(){ const v=$('mesajInput').value.trim(); if(!v)return;
   $('mesajInput').value=''; }
 $('gonderBtn').addEventListener('click',gv(yolla));
 $('mesajInput').addEventListener('keydown',gv(e=>{if(e.key==='Enter')yolla();}));
-function lafGonder(e){ if(e.target.tagName!=='BUTTON')return;
+function lafGonder(e){ if(e.target.tagName!=='BUTTON'||e.target.id==='desteDegistirBtn')return;
   Promise.resolve(push(yol('sohbet'),{uid,ad:benimAd,metin:e.target.textContent,ts:Date.now()})).catch(()=>{}); }
 $('laflar').addEventListener('click',gv(lafGonder));
 /* Masanın hemen altındaki hızlı mesaj düğmeleri: oyun akışı hızlanınca
    "Mesajlar" kutusuna kadar kaydırmadan tek dokunuşla tepki verilebilsin. */
 $('hizliMesajlar').addEventListener('click',gv(lafGonder));
+/* Deste sayısı: 1-8 arası standart 52'lik desteyi birlikte karıp "shoe"
+   oluşturuyor (klasik masa Blackjack'indeki gibi) — deste sayısı arttıkça
+   kart sayımı zorlaşır. Herhangi bir oyuncu (izleyici hariç) istediği an
+   değiştirebilir; bir sonraki dağıtımdan itibaren geçerli olur. */
+$('desteDegistirBtn').addEventListener('click',gv(async()=>{
+  if(!masa||izleyici) return;
+  const yeni=(masa.desteSayisi||1)%8+1;
+  await update(yol('masa'),{desteSayisi:yeni});
+  sistem(benimAd+' desteyi değiştirdi: bundan sonra '+yeni+'/8 deste karılacak.');
+}));
 /* "Kurpiyer kartları dağıttı", "X yerden kart aldı" gibi SİSTEM mesajları
    masanın hemen altında kısa süreliğine belirip kaybolur — sıra bilgisini
    (oyunDurum) kapatmaz. Oyuncuların yazdığı SIRADAN mesajlar burada değil,
@@ -1747,7 +1782,7 @@ $('sifirlaBtn').addEventListener('click',gv(async()=>{
   await remove(yol('istekler')).catch(()=>{});
   await remove(yol('gizli')).catch(()=>{});
   await update(yol('masa'),{faz:'bekleme',tur:0,el:0,sira:null,sonTarih:null,koltuk:no,
-    sonMesaj:null,bozuk:null,sonEl:null,elSonuTs:null,sonSayilanEl:null,acilisTs:null,duraklatildi:null,devamOnay:null});
+    sonMesaj:null,bozuk:null,sonEl:null,elSonuTs:null,sonSayilanEl:null,acilisTs:null,duraklatildi:null,devamOnay:null,desteSayisi:null});
   sistem('Kurucu masayı sıfırladı — yeni oyun kurulacak.');
   sayimCalisiyor=false; kaydedildi=false; sonPerdeEl=-1;
 }));
