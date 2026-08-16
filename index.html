@@ -204,8 +204,18 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
     Firebase bilgilerinle doldurmalısın. Adımlar KURULUM.md dosyasında.
   </div>
 
+  <!-- ================= MASAYA DÖNÜŞ ================= -->
+  <div id="ekYukleme" class="gizli">
+    <div class="kutu" style="text-align:center">
+      <h2 style="justify-content:center">Masaya dönülüyor</h2>
+      <p class="not" id="yuklemeMetin" style="margin:0">Masana dönülüyor…</p>
+      <button class="dugme gizli" id="yuklemeTekrar" style="margin-top:14px">Tekrar Dene</button>
+      <button class="dugme bos gizli" id="yuklemeVazgec" style="margin:0">Giriş ekranına dön</button>
+    </div>
+  </div>
+
   <!-- ================= GİRİŞ ================= -->
-  <div id="ekGiris">
+  <div id="ekGiris" class="gizli">
     <div class="kutu">
       <h2>Masaya gel</h2>
       <label for="adInput">Takma adın</label>
@@ -393,8 +403,8 @@ const SURUM='s9';
 /* ================================================================
    AYAR DÜĞMELERİ — davranışı buradan değiştirebilirsin
    ================================================================ */
-const PERDE_SURESI   = 4000;    // kazanan ekranı kaç ms sonra kendi kapansın
-const EL_SONU_OTOMAT = 8000;    // el sonunda kimse basmazsa kaç ms sonra yeni el
+const PERDE_SURESI   = 2500;    // kazanan ekranı kaç ms sonra kendi kapansın
+const EL_SONU_OTOMAT = 6000;    // el sonunda kimse basmazsa kaç ms sonra yeni el
 const SURE_DOLUNCA   = 'hazir'; // 'hazir' = süresi dolan otomatik hazır sayılır (el devam eder)
                                 // 'boz'   = eski davranış: el bozulur, yeniden dağıtılır
 const CANLILIK_MS    = 20000;   // "buradayım" damgası tazeleme aralığı
@@ -470,7 +480,7 @@ try{
     uid=u.uid;
     if(FIREBASE_AYAR.apiKey.startsWith('BURAYA')) return;
     $('girisDurum').textContent='Hazır. ('+SURUM+')';
-    await oturumuGeriYukle();
+    oturumuGeriYukle();
   });
 }catch(e){}
 
@@ -480,7 +490,8 @@ function kodUret(){const h='ABCDEFGHJKLMNPRSTUVYZ23456789';let k='';for(let i=0;
 /* ---------- durum ---------- */
 let oda=null, benimAd='', masa=null, oyuncular={}, acik=null, elim=null;
 let sahipMi=false, izleyici=false, dinleyiciler=[], sonPerdeEl=-1, sayimCalisiyor=false;
-let baglandi=false, perdeZaman=null, masaKapandi=false;
+let baglandi=false, perdeZaman=null, perdeAcilis=0, masaKapandi=false;
+let geriDonus=false, oturumKaydi=null, yuklemeUyarisi=null;
 const dinle=(r,fn)=>dinleyiciler.push(onValue(r,fn));
 const kes=()=>{dinleyiciler.forEach(f=>f());dinleyiciler=[];};
 const oyuncuListesi = () => Object.entries(oyuncular)
@@ -491,22 +502,27 @@ const sunucuListesi = oyn => Object.entries(oyn||{})
   .filter(([,o])=>!o.izleyici && !o.ayrildi)
   .sort((a,b)=>(a[1].sirasi||0)-(b[1].sirasi||0)||(a[0]<b[0]?-1:1)).map(([u])=>u);
 
-/* ---------- oturum sürekliliği ---------- */
-async function oturumuGeriYukle(){
-  let kayit=null;
-  try{ kayit=JSON.parse(localStorage.getItem('masa_oturum')||'null'); }catch(e){}
-  if(!kayit||!kayit.oda) return;
-  $('girisDurum').textContent='Masana dönülüyor…';
-  try{
-    const m=(await get(ref(db,'odalar/'+kayit.oda+'/masa'))).val();
-    if(!m){ localStorage.removeItem('masa_oturum'); $('girisDurum').textContent='Önceki masa kapanmış.'; return; }
-    const ben=(await get(ref(db,'odalar/'+kayit.oda+'/oyuncular/'+uid))).val();
-    if(!ben){ localStorage.removeItem('masa_oturum'); $('girisDurum').textContent='Masadaki yerin kalmamış.'; return; }
-    if(ben.ayrildi){ localStorage.removeItem('masa_oturum'); $('girisDurum').textContent='Bu masadan kalkmıştın.'; return; }
-    oda=kayit.oda; benimAd=ben.ad||kayit.ad; sahipMi=(m.sahip===uid); izleyici=!!ben.izleyici;
-    $('adInput').value=benimAd;
-    bagla();
-  }catch(e){ $('girisDurum').textContent='Masaya dönülemedi: '+(e.code||e.message); }
+/* ---------- oturum sürekliliği ----------
+   ESKİ HÂLİ: önce sunucudan masa+oyuncu okunuyor, cevap gelene kadar giriş ekranı
+   duruyordu. Safari sekmeyi arka plana atınca soket kapanıyor ve bu okuma bazen hiç
+   dönmüyordu → "Masana dönülüyor…" ekranında takılma. Ayrıca F5'te önce giriş
+   ekranı görünüp sonra oyuna atlıyordu.
+   YENİ HÂLİ: hiçbir şey beklenmez; dinleyiciler hemen kurulur, veri gelince ekran
+   kendiliğinden doğru yere geçer. 10 sn'de veri gelmezse tekrar dene çıkışı verilir. */
+function oturumuGeriYukle(){
+  if(!oturumKaydi||!oturumKaydi.oda) return;
+  oda=oturumKaydi.oda; benimAd=oturumKaydi.ad||''; geriDonus=true;
+  $('adInput').value=benimAd;
+  bagla();
+}
+function yuklemeBekletKur(){
+  clearTimeout(yuklemeUyarisi);
+  yuklemeUyarisi=setTimeout(()=>{
+    if(masa) return;
+    $('yuklemeMetin').textContent='Masaya bağlanılamadı. Telefon uykudayken bağlantı kesilmiş olabilir.';
+    $('yuklemeTekrar').classList.remove('gizli');
+    $('yuklemeVazgec').classList.remove('gizli');
+  },10000);
 }
 
 /* ---------- CANLILIK İŞARETİ ("buradayım") ----------
@@ -518,6 +534,8 @@ async function oturumuGeriYukle(){
 let sonCanlilik=0;
 function cevrimiciYenile(zorla){
   if(!oda||!uid) return;
+  // Kaydımız yoksa yazma: yoksa masadan alınmış oyuncu için adsız hayalet kayıt oluşuyor
+  if(!oyuncular||!oyuncular[uid]) return;
   const simdi=Date.now();
   if(!zorla && simdi-sonCanlilik<CANLILIK_MS-5000) return;
   sonCanlilik=simdi;
@@ -535,7 +553,20 @@ function uyanmaKur(){
 uyanmaKur();
 
 /* ---------- ekran ---------- */
-function ekran(h){['ekGiris','ekAyar','ekBekleme','ekOyun','ekSonuc'].forEach(e=>$(e).classList.add('gizli'));$(h).classList.remove('gizli');}
+function ekran(h){['ekGiris','ekYukleme','ekAyar','ekBekleme','ekOyun','ekSonuc'].forEach(e=>$(e).classList.add('gizli'));$(h).classList.remove('gizli');}
+
+/* Sayfa açılır açılmaz (sunucuyu beklemeden) doğru ekranı göster:
+   kayıtlı masa varsa giriş formu HİÇ görünmesin. */
+try{ oturumKaydi=JSON.parse(localStorage.getItem('masa_oturum')||'null'); }catch(e){ oturumKaydi=null; }
+if(oturumKaydi&&oturumKaydi.oda){
+  ekran('ekYukleme');
+  $('yuklemeMetin').textContent='Masana dönülüyor… ('+oturumKaydi.oda+')';
+  yuklemeBekletKur();
+}else{
+  ekran('ekGiris');
+}
+$('yuklemeTekrar').addEventListener('click',gv(()=>location.reload()));
+$('yuklemeVazgec').addEventListener('click',gv(()=>{ localStorage.removeItem('masa_oturum'); location.reload(); }));
 
 /* ---------- giriş ---------- */
 document.querySelectorAll('#kisiSecim button,#bahisSecim button,#hedefSecim button').forEach(b=>
@@ -615,6 +646,7 @@ function bagla(){
   baglandi=true;
   $('odaKodu').textContent=oda; $('kodRozet').classList.remove('gizli');
   $('ustAlt').textContent = (izleyici ? 'İZLEYİCİ' : 'ONLINE MASA')+' · '+SURUM;
+  if(!geriDonus) oyuncular[uid]=oyuncular[uid]||{};   // yeni katılımda ilk damgaya izin
   cevrimiciYenile(true);
   localStorage.setItem('masa_oturum',JSON.stringify({oda,ad:benimAd}));
   dinle(yol('masa'), s=>{masa=s.val();ciz();});
@@ -624,8 +656,10 @@ function bagla(){
   dinle(yol('sohbet'), s=>sohbetCiz(s.val()));
   sayacBaslat();
   dinle(yol('istekler'), s=>{ istekleriIsle(s.val()).catch(e=>console.error('istekler',e)); });
-  sistem(benimAd + (izleyici?' masayı izlemeye başladı.':' masaya oturdu.'));
-  ekran('ekBekleme');
+  if(!geriDonus){
+    sistem(benimAd + (izleyici?' masayı izlemeye başladı.':' masaya oturdu.'));
+    ekran('ekBekleme');
+  }
 }
 
 /* ---------- çizim ---------- */
@@ -643,8 +677,16 @@ function ciz(){
     }
     return;
   }
+  clearTimeout(yuklemeUyarisi);
   sahipMi = masa.sahip===uid;                       // kurpiyerlik devredilebilir
   if(uid && oyuncular[uid]) izleyici = !!oyuncular[uid].izleyici;
+  if(Object.keys(oyuncular).length && (!oyuncular[uid] || oyuncular[uid].ayrildi) && !masaKapandi){
+    masaKapandi=true;                               // koltuğumuz kalmamış
+    localStorage.removeItem('masa_oturum'); kes();
+    perdeKapat(); $('bozukPerde').classList.add('gizli');
+    $('girisDurum').textContent = oyuncular[uid] ? 'Bu masadan kalkmıştın.' : 'Masadaki yerin kalmamış.';
+    ekran('ekGiris'); return;
+  }
   const oyn=oyuncuListesi();
 
   /* --- bekleme --- */
@@ -901,7 +943,9 @@ async function kurtarmaKontrol(){
     /* EL SONU: eskiden hiçbir kurtarma yoluna bağlı değildi. Kurucu düşerse ya da
        "Sonraki Eli Dağıt"a kimse basmazsa masa sonsuza kadar donuyordu. */
     if(f==='elSonu'){
-      if(Date.now()-(masa.elSonuTs||0) < EL_SONU_OTOMAT) return;
+      // damga yoksa "çok eski" sanıp kazanan ekranını atlamasın
+      if(!masa.elSonuTs){ await update(yol('masa'),{elSonuTs:Date.now()}); return; }
+      if(Date.now()-masa.elSonuTs < EL_SONU_OTOMAT) return;
       if(masa.sonEl){ await update(yol('masa'),{faz:'bitti'}); return; }
       const oyn=(await get(yol('oyuncular'))).val()||{};
       if(sunucuListesi(oyn).length>=2) await eliDagit();
@@ -945,6 +989,9 @@ function sayacCiz(){
 }
 let sonTik=0;
 function tik(){
+  // Perde kapanışı SAYACA değil SAATE bağlı: telefon uyurken setTimeout donuyor,
+  // uyanınca perde ekranda kalıyordu.
+  if(perdeAcilis && Date.now()-perdeAcilis>PERDE_SURESI) perdeKapat();
   sayacCiz();
   // ZAMANA BAĞLI denetim: masa tamamen dursa (hiç veri değişmese) bile kurtarma çalışsın
   if(Date.now()-sonTik>2000){
@@ -1251,8 +1298,8 @@ async function eliAcIc(){
   const zatenSayildi = m.sonSayilanEl===(m.el||0);
   const yeniTur = zatenSayildi ? (m.tur||0) : (m.tur||0)+1;
   await set(yol('acik','eller'),acikEller);
-  await update(yol('masa'),{tur:yeniTur,sonSayilanEl:(m.el||0),sira:null,sonTarih:null,
-    sonMesaj:mesaj,faz:'elSonu',elSonuTs:Date.now(), sonEl: yeniTur>=m.hedef});
+  await update(yol('masa'),{elSonuTs:Date.now(),tur:yeniTur,sonSayilanEl:(m.el||0),sira:null,sonTarih:null,
+    sonMesaj:mesaj, sonEl: yeniTur>=m.hedef, faz:'elSonu'});
   sistem(mesaj);
 }
 
@@ -1304,7 +1351,7 @@ $('bitirBtn').addEventListener('click',gv(async()=>{ if(confirm('Masa kapansın 
 
 /* ---------- açılış perdesi ---------- */
 /* Kazanan ekranı "Kapat"a basılmadan kaybolmuyordu; artık kendi kapanır. */
-function perdeKapat(){ clearTimeout(perdeZaman); perdeZaman=null; $('perde').classList.add('gizli'); }
+function perdeKapat(){ clearTimeout(perdeZaman); perdeZaman=null; perdeAcilis=0; $('perde').classList.add('gizli'); }
 function perdeAc(){
   const eller=(acik&&acik.eller)||{};
   const kazananlar=Object.entries(eller).filter(([,e])=>e.kazandi);
@@ -1323,10 +1370,12 @@ function perdeAc(){
     '<div class="kartlar">'+(e.kartlar||[]).map(k=>'<span class="mm'+(k.k?' kir':'')+'">'+k.r+'</span>').join('')+'</div>'+
     '<span class="top'+(e.patlak?' patladi':'')+'">'+e.toplam+(e.patlak?' ✖':'')+'</span></div>').join('');
   $('perde').classList.remove('gizli');
+  perdeAcilis=Date.now();
   clearTimeout(perdeZaman);
   perdeZaman=setTimeout(perdeKapat,PERDE_SURESI);
 }
 $('perdeKapat').addEventListener('click',gv(perdeKapat));
+$('perde').addEventListener('click',gv(perdeKapat));   // perdenin herhangi bir yerine dokun, kapansın
 
 /* ---------- kod paylaş ---------- */
 $('kopyalaBtn').addEventListener('click',gv(async()=>{
