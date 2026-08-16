@@ -215,7 +215,7 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 <div class="sarma">
 
   <div class="ust">
-    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v13</small></div>
+    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v14</small></div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="kod gizli" id="izleyiciRozet" title="izleyen kişi sayısı">👀 <b id="izleyiciSayi">0</b></div>
       <div class="kod gizli" id="kodRozet">ODA<b id="odaKodu">----</b></div>
@@ -527,37 +527,58 @@ if(FIREBASE_AYAR.apiKey.startsWith('BURAYA')){
    kullanıcının Safari ayarlarından site verisini elle silmesiydi. Bu fonksiyon
    aynı temizliği tek dokunuşla yapar: Firebase'in kendi yerel veritabanını silip
    sayfayı yeniden yükler, böylece taze bir oturum kurulur. */
-async function baglantiSifirla(){
+async function baglantiSifirla(oturumuKoru){
   try{
     await new Promise(res=>{
       const istek=indexedDB.deleteDatabase('firebaseLocalStorageDb');
       istek.onsuccess=istek.onerror=istek.onblocked=()=>res();
     });
   }catch(e){}
-  localStorage.removeItem('masa_oturum');
+  if(!oturumuKoru) localStorage.removeItem('masa_oturum');   // oturumuKoru: masadaki yerimiz kaybolmasın
   location.reload();
+}
+/* Bağlantı takılınca kullanıcı HANGİ EKRANDA olursa olsun çıkış yolu görsün.
+   ESKİ HÂLİ: sıfırlama düğmesi yalnızca giriş ekranındaydı; masa kurup sayfayı
+   yenileyen kişi "Masaya dönülüyor" ekranında kalıyor ve orada hiçbir buton
+   görmediği için sonsuza kadar "Masana dönülüyor…" yazısına bakıyordu. */
+function baglantiTakildi(mesaj){
+  $('girisDurum').textContent = mesaj || 'Bağlantı kurulamadı, normalden uzun sürüyor.';
+  $('girisSifirlaBtn').classList.remove('gizli');
+  $('yuklemeMetin').textContent = mesaj || 'Bağlantı kurulamadı. Önce "Tekrar Dene", olmazsa sıfırlamayı dene.';
+  $('yuklemeTekrar').classList.remove('gizli');
+  $('yuklemeVazgec').classList.remove('gizli');
 }
 
 let app,auth,db,uid=null,girisZamanAsimi=null;
+const AUTH_KURTARMA='auth_kurtarma_denendi';
 try{
   app = initializeApp(FIREBASE_AYAR);
   auth = getAuth(app); db = getDatabase(app);
-  signInAnonymously(auth).catch(e=>$('girisDurum').textContent='Bağlantı hatası: '+e.code);
+  signInAnonymously(auth).catch(e=>baglantiTakildi('Bağlantı hatası: '+(e.code||e.message)));
   girisZamanAsimi=setTimeout(()=>{
     if(uid) return;
-    $('girisDurum').textContent='Bağlantı kurulamadı, normalden uzun sürüyor.';
-    $('girisSifirlaBtn').classList.remove('gizli');
-  },8000);
+    /* İlk takılmada kullanıcıyı buton aramaya zorlamadan BİR KEZ otomatik
+       kurtar: Firebase'in tıkanan yerel veritabanını silip sayfayı yenile.
+       Masaya dönüş kaydı korunur, koltuk kaybolmaz. sessionStorage işareti
+       sonsuz yenilenme döngüsünü engeller (sekme kapanınca sıfırlanır). */
+    if(!sessionStorage.getItem(AUTH_KURTARMA)){
+      sessionStorage.setItem(AUTH_KURTARMA,'1');
+      baglantiSifirla(true);
+      return;
+    }
+    baglantiTakildi();
+  },7000);
   onAuthStateChanged(auth,async u=>{
     if(!u) return;
     uid=u.uid;
     clearTimeout(girisZamanAsimi);
+    sessionStorage.removeItem(AUTH_KURTARMA);
     $('girisSifirlaBtn').classList.add('gizli');
     if(FIREBASE_AYAR.apiKey.startsWith('BURAYA')) return;
     $('girisDurum').textContent='Hazır. ('+SURUM+')';
     oturumuGeriYukle();
   });
-}catch(e){}
+}catch(e){ baglantiTakildi('Bağlantı kurulamadı: '+(e.code||e.message)); }
 $('girisSifirlaBtn').addEventListener('click',gv(()=>baglantiSifirla()));
 
 const yol = (...p) => ref(db, ['odalar', oda, ...p].join('/'));
@@ -568,7 +589,14 @@ let oda=null, benimAd='', masa=null, oyuncular={}, acik=null, elim=null;
 let sahipMi=false, izleyici=false, dinleyiciler=[], sonPerdeEl=-1, sayimCalisiyor=false;
 let baglandi=false, perdeZaman=null, perdeAcilis=0, masaKapandi=false, sonElimHtml=null, sonKartSayim=0;
 let geriDonus=false, oturumKaydi=null, yuklemeUyarisi=null;
-const dinle=(r,fn)=>dinleyiciler.push(onValue(r,fn));
+/* Hata geri çağrısı ŞART: eskiden yoktu, dolayısıyla izin/bağlantı hatası
+   sessizce yutuluyor ve ekran hiç güncellenmediği için kullanıcı yükleme
+   ekranında sonsuza kadar takılı kalıyordu. Artık gerçek hata kodu görünüyor. */
+const dinle=(r,fn)=>dinleyiciler.push(onValue(r,fn,e=>{
+  console.error('veri dinlenemedi',e);
+  if(masa) return;                        // masa zaten yüklendiyse ekranı bozma
+  baglantiTakildi('Masa verisi okunamadı ('+(e.code||e.message)+').');
+}));
 const kes=()=>{dinleyiciler.forEach(f=>f());dinleyiciler=[];};
 const oyuncuListesi = () => Object.entries(oyuncular)
   .filter(([,o])=>!o.izleyici && !o.ayrildi)
