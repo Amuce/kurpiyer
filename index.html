@@ -215,7 +215,7 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 <div class="sarma">
 
   <div class="ust">
-    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v14</small></div>
+    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v15</small></div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="kod gizli" id="izleyiciRozet" title="izleyen kişi sayısı">👀 <b id="izleyiciSayi">0</b></div>
       <div class="kod gizli" id="kodRozet">ODA<b id="odaKodu">----</b></div>
@@ -1304,11 +1304,30 @@ async function botOyna(bid){
    İstek, hamle tam işlenip sıra ilerletilene KADAR kuyruktan silinmez.
    Oyuncunun butonu da (bkz. istek()/hamleBekliyor) ancak o zaman tekrar
    açılıyor — kart dağıtılmadan ikinci kez basılamaz. */
-let isleniyor=false;
+/* KAYBOLAN İSTEK HATASI: eskiden meşgulken gelen çağrı sessizce DÜŞÜRÜLÜYORDU
+   (if(isleniyor) return). Firebase dinleyicisi yalnızca veri DEĞİŞİNCE
+   tetiklendiği için, tam o anda yazılan "kart al" isteği bir daha hiç
+   işlenmiyor, kuyrukta öylece kalıyordu → oyuncu kart alamıyor, butonu 8 sn
+   zaman aşımıyla açılıyor ve "bastım ama kart gelmedi" oluyordu.
+   ARTIK: düşürülen çağrı bir bayrak bırakır, işlem bitince kuyruk TAZE
+   okunup yeniden işlenir. Böylece hiçbir istek kaybolmaz. */
+let isleniyor=false, istekTekrar=false;
 async function istekleriIsle(hepsi){
-  if(!kurpiyerMiyim()||!hepsi||isleniyor) return;
+  if(!kurpiyerMiyim()||!hepsi) return;
+  if(isleniyor){ istekTekrar=true; return; }
   isleniyor=true;
   try{
+    for(let tur=0; tur<6; tur++){
+      istekTekrar=false;
+      const kuyruk = tur===0 ? hepsi : (await get(yol('istekler'))).val();
+      if(!kuyruk || !Object.keys(kuyruk).length) break;
+      await istekKuyrugunuIsle(kuyruk);
+      if(!istekTekrar) break;
+    }
+  } finally { isleniyor=false; }
+}
+async function istekKuyrugunuIsle(hepsi){
+  {
     const mm=(await get(yol('masa'))).val();
     if(!mm||mm.sahip!==uid) return;          // kurpiyerlik devredilmiş → karışma
     for(const [anahtar,ist] of Object.entries(hepsi).sort((a,b)=>a[1].ts-b[1].ts)){
@@ -1333,7 +1352,7 @@ async function istekleriIsle(hepsi){
       }catch(e){ console.error('istek işlenemedi',ist&&ist.tip,e); }
       finally{ await remove(yol('istekler',anahtar)).catch(()=>{}); }
     }
-  } finally { isleniyor=false; }
+  }
 }
 
 let desteKilidi=Promise.resolve();
@@ -1401,6 +1420,13 @@ async function desteTazele(){
    emniyet yolları zaten geciken bir durumu düzeltiyor, üstüne 1 sn eklemez. */
 const SIRA_GECIS_MS=1000, SIRA_KILIT_EMNIYET_MS=15000;
 let siraIsleniyor=false, siraIslemBaslangici=0;
+/* NOT: Burada bilerek TEKRAR mekanizması YOK. Düşürülen sıra çağrısı kaybolsa
+   bile zararsız: durumu yeniden değerlendiren emniyet yolları (ciz() ve her
+   2 sn çalışan kurtarmaKontrol) sırayı zaten toparlıyor. Tekrar döngüsü
+   denendi ve her tur yeni bir masa yazımı → yeni ciz() → yeni tekrar
+   zinciri doğurup masayı belirgin şekilde yavaşlattı (simülasyonda aynı
+   sürede 50 hamle yerine 8 hamle). Kaybolduğunda gerçekten telafisi olmayan
+   tek şey İSTEK kuyruğudur; tekrar mantığı bu yüzden sadece orada. */
 function siraIlerlet(baslangicTs){
   // beklenmedik bir hata bayrağı takılı bırakırsa masa sonsuza kadar donmasın
   if(siraIsleniyor && Date.now()-siraIslemBaslangici>SIRA_KILIT_EMNIYET_MS) siraIsleniyor=false;
