@@ -90,9 +90,8 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 .koltuk .kartcik{display:flex;gap:2px;justify-content:center;margin-bottom:3px;min-height:26px;align-items:flex-end}
 .mini{width:17px;height:24px;border-radius:2.5px;background:repeating-linear-gradient(45deg,#2B3A38 0 4px,#22302E 4px 8px);
   border:1px solid var(--cizgi2);animation:gel .32s ease-out}
-.mini.acikKart{background:#FBF9F4;border-color:#C9C2B4;color:#12100C;
-  font-family:Georgia,serif;font-weight:700;font-size:8px;display:grid;place-items:center;line-height:1}
-.mini.acikKart i{font-style:normal;font-size:7px;display:block}
+.mini.acikKart{background:linear-gradient(160deg,#F2EEE4,#DCD5C6);border-color:#B9B0A0;color:#171208;
+  font-family:'Antonio',sans-serif;font-size:9px;display:grid;place-items:center;line-height:1}
 .mini.acikKart.kir{color:var(--kirmizi)}
 @keyframes gel{from{opacity:0;transform:translateY(-26px) scale(.7)}to{opacity:1;transform:none}}
 .koltuk .rozet{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.1em;padding:2px 5px;margin-top:3px;
@@ -128,26 +127,19 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 .elim .toplam.riskli{color:var(--uyari)}
 .elim .toplam.olu{color:var(--kirmizi)}
 .kartlarim{display:flex;gap:7px;justify-content:center;flex-wrap:wrap}
-/* klasik iskambil yüzü: iki köşe indeksi + ortada gerçek pip dizilimi */
-.kart{width:54px;height:78px;border-radius:5px;background:#FBF9F4;border:1px solid #C9C2B4;
-  color:#12100C;position:relative;display:block;overflow:hidden;
-  font-family:Georgia,'Times New Roman',serif;font-weight:700;
-  box-shadow:0 4px 10px rgba(0,0,0,.45);animation:gel .32s ease-out}
-.kart.kir{color:#C0392B}
-.kart .kose{position:absolute;font-size:12px;line-height:.95;text-align:center;width:12px}
-.kart .kose i{display:block;font-style:normal;font-size:10px;margin-top:1px}
-.kart .kose.ust{top:3px;left:3px}
-.kart .kose.alt{bottom:3px;right:3px;transform:rotate(180deg)}
-.kart .pipler{position:absolute;inset:12px 15px;display:grid;
-  grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(7,1fr);place-items:center}
-.kart .pipler i{font-style:normal;font-size:11px;line-height:1}
-.kart .as{position:absolute;inset:0;display:grid;place-items:center;font-size:32px;font-style:normal}
-.kart .yuz{position:absolute;inset:11px 13px;border:1px solid currentColor;border-radius:2px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;opacity:.9}
-.kart .yuz b{font-size:20px;line-height:1}
-.kart .yuz i{font-style:normal;font-size:11px;line-height:1}
+.kart{width:52px;height:74px;border-radius:6px;background:linear-gradient(160deg,#F5F1E7,#DED7C8);border:1px solid #B9B0A0;
+  color:#171208;position:relative;display:grid;place-items:center;font-family:'Antonio',sans-serif;
+  box-shadow:0 5px 12px rgba(0,0,0,.4);animation:gel .32s ease-out}
+.kart.kir{color:var(--kirmizi)}
+.kart .rakam{font-size:21px;line-height:1}
+.kart .tip{font-size:14px}
+.kart .kose{position:absolute;top:3px;left:4px;font-family:'IBM Plex Mono',monospace;font-size:8px}
+/* As kartının tamamı dokunmatik */
+.kart.asKart{cursor:pointer;border-color:var(--altin);box-shadow:0 5px 12px rgba(0,0,0,.4),0 0 0 1px var(--altin)}
+.kart.asKart:active{transform:scale(.96)}
 .kart .asSec{position:absolute;bottom:-1px;left:-1px;right:-1px;background:var(--altin);color:#171208;
-  font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 0;cursor:pointer;border-radius:0 0 5px 5px;letter-spacing:.06em}
+  font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 0;border-radius:0 0 5px 5px;letter-spacing:.06em;
+  pointer-events:none;text-align:center}
 .elim .altnot{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--sis);margin-top:6px;line-height:1.5;text-align:center}
 .atlandi{border:1px solid var(--uyari);color:var(--uyari);font-family:'IBM Plex Mono',monospace;font-size:10px;
   padding:7px;text-align:center;margin-top:9px;letter-spacing:.08em}
@@ -159,17 +151,17 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
   text-align:center;margin-bottom:4px}
 .perde .altbaslik{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;color:var(--sis);margin-bottom:18px;text-align:center}
 .kazanan-el{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px}
-.kazanan-el .kart{width:62px;height:90px;box-shadow:0 8px 20px rgba(0,0,0,.55),0 0 0 1px var(--altin)}
+.kazanan-el .kart{width:60px;height:86px;box-shadow:0 8px 20px rgba(0,0,0,.55),0 0 0 1px var(--altin)}
+.kazanan-el .kart .rakam{font-size:25px}
 .digerleri{width:100%;max-width:400px;margin-top:16px;display:flex;flex-direction:column;gap:7px}
 .dig-satir{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;border:1px solid var(--cizgi);
   background:var(--zemin2);padding:7px 9px}
 .dig-satir.patlak{border-color:rgba(184,74,62,.5)}
 .dig-satir .ad{font-family:'Antonio',sans-serif;font-size:14px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dig-satir .kartlar{display:flex;gap:3px}
-.dig-satir .mm{width:18px;height:25px;border-radius:2px;background:#FBF9F4;border:1px solid #C9C2B4;
-  color:#12100C;font-family:Georgia,serif;font-weight:700;font-size:8px;display:grid;place-items:center;line-height:1}
-.dig-satir .mm i{font-style:normal;font-size:7px;display:block}
-.dig-satir .mm.kir{color:#C0392B}
+.dig-satir .mm{width:17px;height:24px;border-radius:2px;background:linear-gradient(160deg,#F2EEE4,#DCD5C6);border:1px solid #B9B0A0;
+  color:#171208;font-family:'Antonio',sans-serif;font-size:8px;display:grid;place-items:center;line-height:1}
+.dig-satir .mm.kir{color:var(--kirmizi)}
 .dig-satir .top{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;min-width:34px;text-align:right}
 .dig-satir .top.patladi{color:var(--kirmizi)}
 .dig-satir .top.kazandi{color:var(--altin2)}
@@ -207,7 +199,7 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 <div class="sarma">
 
   <div class="ust">
-    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA V3</small></div>
+    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v4</small></div>
     <div class="kod gizli" id="kodRozet">ODA<b id="odaKodu">----</b></div>
   </div>
 
@@ -433,7 +425,7 @@ function hataBildir(e){
   if(yer) yer.textContent='Bir işlem tamamlanamadı ('+kod+'). Tekrar dene.';
 }
 const kacir = s => String(s==null?'':s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
-const TIPLER = [{s:'♠',k:0},{s:'♥',k:1},{s:'♦',k:1},{s:'♣',k:0}];
+const TIPLER = [{s:'♠️',k:0},{s:'♥️',k:1},{s:'♦️',k:1},{s:'♣️',k:0}];
 const RAKAMLAR = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
 
 /* ---------- kart mantığı ---------- */
@@ -474,27 +466,12 @@ function kesinPatlak(kartlar){
   let t=0;(kartlar||[]).forEach(k=>{ t += (k.r==='A') ? 1 : sabitDeger(k); });
   return t>21;
 }
-/* ---------- klasik kart yüzü ---------- */
-const PIP = {
-  '2':[[2,1],[2,7]], '3':[[2,1],[2,4],[2,7]], '4':[[1,1],[3,1],[1,7],[3,7]],
-  '5':[[1,1],[3,1],[2,4],[1,7],[3,7]], '6':[[1,1],[3,1],[1,4],[3,4],[1,7],[3,7]],
-  '7':[[1,1],[3,1],[2,2],[1,4],[3,4],[1,7],[3,7]],
-  '8':[[1,1],[3,1],[2,2],[1,4],[3,4],[2,6],[1,7],[3,7]],
-  '9':[[1,1],[3,1],[1,3],[3,3],[2,4],[1,5],[3,5],[1,7],[3,7]],
-  '10':[[1,1],[3,1],[2,2],[1,3],[3,3],[1,5],[3,5],[2,6],[1,7],[3,7]]
-};
-/* iOS ♥ ve ♦ işaretlerini emoji yapıyor; \uFE0E metin biçimini zorlar */
-const sembol = t => String(t||'').replace(/\uFE0F/g,'')+'\uFE0E';
+/* ---------- kart yüzü (sade ve okunaklı) ---------- */
 function kartYuz(k, ek, ekSinif){
-  const s=sembol(k.t), kir=k.k?' kir':'';
-  const kose='<span class="kose ust">'+k.r+'<i>'+s+'</i></span>'+
-             '<span class="kose alt">'+k.r+'<i>'+s+'</i></span>';
-  let orta;
-  if(PIP[k.r]) orta='<span class="pipler">'+PIP[k.r]
-      .map(([c,r])=>'<i style="grid-column:'+c+';grid-row:'+r+'">'+s+'</i>').join('')+'</span>';
-  else if(k.r==='A') orta='<span class="as">'+s+'</span>';
-  else orta='<span class="yuz"><b>'+k.r+'</b><i>'+s+'</i></span>';
-  return '<div class="kart'+kir+(ekSinif?' '+ekSinif:'')+'">'+kose+orta+(ek||'')+'</div>';
+  return '<div class="kart'+(k.k?' kir':'')+(ekSinif?' '+ekSinif:'')+'">'+
+    '<span class="kose">'+k.r+k.t+'</span>'+
+    '<div style="text-align:center"><div class="rakam">'+k.r+'</div><div class="tip">'+k.t+'</div></div>'+
+    (ek||'')+'</div>';
 }
 const imzali = n => (n>0?'+':n<0?'−':'') + Math.abs(n||0).toLocaleString('tr-TR') + ' ₺';
 
@@ -844,7 +821,7 @@ function masaCiz(oyn){
     const adet = dz.adet||0;
     const acikEl = acikEller && acikEller[u] ? acikEller[u] : null;
     const kartlar = acikEl
-      ? (acikEl.kartlar||[]).map(k=>'<span class="mini acikKart'+(k.k?' kir':'')+'">'+k.r+'<i>'+sembol(k.t)+'</i></span>').join('')
+      ? (acikEl.kartlar||[]).map(k=>'<span class="mini acikKart'+(k.k?' kir':'')+'">'+k.r+'</span>').join('')
       : Array.from({length:adet},()=>'<span class="mini"></span>').join('');
     const rozet = acikEl
       ? '<span class="rozet '+(acikEl.patlak?'':'hazir')+'">'+acikEl.toplam+(acikEl.patlak?' ✖':'')+'</span>'
@@ -866,9 +843,10 @@ function elimCiz(){
     $('elimToplam').textContent='—';$('elimAltnot').textContent='izleyici modu';return;
   }
   $('kartlarim').innerHTML = kartlar.map((k,i)=>{
-    const asDugme = k.r==='A'
-      ? '<span class="asSec" data-i="'+i+'">'+((asSec[i]||11)===11?'11 ▸ 1':'1 ▸ 11')+'</span>' : '';
-    return kartYuz(k, asDugme);
+    if(k.r!=='A') return kartYuz(k);
+    // As kartının TAMAMI dokunmatik: küçük şeride nişan almaya gerek yok
+    const etiket='<span class="asSec">'+((asSec[i]||11)===11?'11 ▸ 1':'1 ▸ 11')+'</span>';
+    return kartYuz(k, etiket, 'asKart" data-i="'+i);
   }).join('') || '<p class="altnot" style="opacity:.6">kart bekleniyor…</p>';
   const t = toplamHesap(kartlar, asSec);
   const kp = kesinPatlak(kartlar);
@@ -881,8 +859,8 @@ function elimCiz(){
     : 'Kimse elini görmüyor.';
 }
 $('kartlarim').addEventListener('click',gv(async e=>{
-  const s=e.target.closest('.asSec'); if(!s||!elim) return;
-  const i=+s.dataset.i, mevcut=(elim.asSec&&elim.asSec[i])||11;
+  const kart=e.target.closest('.asKart'); if(!kart||!elim) return;
+  const i=+kart.dataset.i, mevcut=(elim.asSec&&elim.asSec[i])||11;
   await update(yol('eller',uid,'asSec'),{[i]: mevcut===11?1:11});
 }));
 
@@ -1399,7 +1377,7 @@ function perdeAc(){
     kacir(oyuncular[u]?.ad||'')+' · '+e.toplam+'</div></div>').join('');
   $('perdeDigerleri').innerHTML = Object.entries(eller).filter(([,e])=>!e.kazandi).map(([u,e])=>
     '<div class="dig-satir'+(e.patlak?' patlak':'')+'"><div class="ad">'+kacir(oyuncular[u]?.ad||'')+'</div>'+
-    '<div class="kartlar">'+(e.kartlar||[]).map(k=>'<span class="mm'+(k.k?' kir':'')+'">'+k.r+'<i>'+sembol(k.t)+'</i></span>').join('')+'</div>'+
+    '<div class="kartlar">'+(e.kartlar||[]).map(k=>'<span class="mm'+(k.k?' kir':'')+'">'+k.r+'</span>').join('')+'</div>'+
     '<span class="top'+(e.patlak?' patladi':'')+'">'+e.toplam+(e.patlak?' ✖':'')+'</span></div>').join('');
   $('perde').classList.remove('gizli');
   perdeAcilis=Date.now();
