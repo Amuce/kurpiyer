@@ -25,7 +25,7 @@ body{background:var(--zemin);color:var(--ak);font-family:'Barlow',system-ui,sans
 .mono{font-family:'IBM Plex Mono',monospace}
 
 /* üst */
-/* üst şerit artık en altta ve ince: ekranın tepesinde yer kaplamıyor */
+/* üst şerit artık en altta ve ince */
 .ust{order:99;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 11px;
   border:1px solid var(--cizgi);background:var(--zemin2);margin-top:12px;opacity:.75}
 .ust .logo{font-family:'Antonio',sans-serif;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--altin2)}
@@ -67,7 +67,7 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 .kod-kutu .etiket{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.2em;color:var(--sis);text-transform:uppercase}
 .kod-kutu .buyuk{font-family:'Antonio',sans-serif;font-size:52px;letter-spacing:.22em;color:var(--altin2);line-height:1.1;margin:6px 0 12px}
 .bos-koltuk{opacity:.45;border-style:dashed}
-.masa-sargi{position:relative;width:100%;aspect-ratio:1;margin-top:11px;max-height:64vh}
+.masa-sargi{position:relative;width:min(100%,42vh);aspect-ratio:1;margin:8px auto 0}
 .cuha{position:absolute;inset:6%;background:radial-gradient(circle at 50% 42%,var(--cuha2),var(--cuha) 62%,#18211F 100%);
   border:1px solid var(--cizgi2);box-shadow:inset 0 0 60px rgba(0,0,0,.55)}
 .cuha.yuvarlak{border-radius:50%}
@@ -78,20 +78,21 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
   border:1px solid var(--cizgi2)}
 .deste-gorsel span:nth-child(2){transform:translate(2px,-2px)}
 .deste-gorsel span:nth-child(3){transform:translate(4px,-4px)}
-.orta .bilgi{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;color:var(--sis);margin-top:9px;line-height:1.7}
+.orta .bilgi{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;color:var(--sis);line-height:1.8}
 .orta .bilgi b{color:var(--ak);font-size:11px}
 .orta .sayim{font-family:'Antonio',sans-serif;font-size:64px;color:var(--altin2);line-height:1}
 
 /* koltuklar */
-.koltuk{position:absolute;transform:translate(-50%,-50%);width:88px;text-align:center;z-index:4}
-.koltuk .ad{font-family:'Antonio',sans-serif;font-size:13px;letter-spacing:.03em;text-transform:uppercase;
+.koltuk{position:absolute;transform:translate(-50%,-50%);width:76px;text-align:center;z-index:4}
+.koltuk .ad{font-family:'Antonio',sans-serif;font-size:12px;letter-spacing:.03em;text-transform:uppercase;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ak)}
 .koltuk .kasa{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--sis);margin-top:1px}
-.koltuk .kartcik{display:flex;gap:2px;justify-content:center;margin-bottom:4px;min-height:30px;align-items:flex-end}
-.mini{width:20px;height:28px;border-radius:2.5px;background:repeating-linear-gradient(45deg,#2B3A38 0 4px,#22302E 4px 8px);
+.koltuk .kartcik{display:flex;gap:2px;justify-content:center;margin-bottom:3px;min-height:26px;align-items:flex-end}
+.mini{width:17px;height:24px;border-radius:2.5px;background:repeating-linear-gradient(45deg,#2B3A38 0 4px,#22302E 4px 8px);
   border:1px solid var(--cizgi2);animation:gel .32s ease-out}
-.mini.acikKart{background:linear-gradient(160deg,#F2EEE4,#DCD5C6);border-color:#B9B0A0;color:#171208;
-  font-family:'Antonio',sans-serif;font-size:9px;display:grid;place-items:center;line-height:1}
+.mini.acikKart{background:#FBF9F4;border-color:#C9C2B4;color:#12100C;
+  font-family:Georgia,serif;font-weight:700;font-size:8px;display:grid;place-items:center;line-height:1}
+.mini.acikKart i{font-style:normal;font-size:7px;display:block}
 .mini.acikKart.kir{color:var(--kirmizi)}
 @keyframes gel{from{opacity:0;transform:translateY(-26px) scale(.7)}to{opacity:1;transform:none}}
 .koltuk .rozet{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.1em;padding:2px 5px;margin-top:3px;
@@ -104,39 +105,50 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 .koltuk.patlakGoster{opacity:.5}
 
 /* kendi elim */
-.sayac-kutu{border:1px solid var(--cizgi);background:var(--zemin2);margin-top:11px;padding:10px 13px}
-.sayac-ust{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.sayac-kutu{border:1px solid var(--cizgi);background:var(--zemin2);margin-top:8px;padding:5px 11px 6px}
+.sayac-ust{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
 .sayac-ust .kim{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.16em;color:var(--sis);text-transform:uppercase}
-.sayac-ust .sn{font-family:'Antonio',sans-serif;font-size:26px;line-height:1;color:var(--ak)}
-.sayac-cubuk{height:4px;background:var(--zemin);overflow:hidden}
+.sayac-ust .sn{font-family:'Antonio',sans-serif;font-size:16px;line-height:1;color:var(--ak)}
+.sayac-cubuk{height:3px;background:var(--zemin);overflow:hidden}
 .sayac-cubuk i{display:block;height:100%;background:var(--altin);transition:width .25s linear}
 .sayac-kutu.uyari{border-color:var(--kirmizi);background:rgba(184,74,62,.12);animation:nabiz .6s ease-in-out infinite}
 .sayac-kutu.uyari .sn{color:var(--kirmizi)}
 .sayac-kutu.uyari .sayac-cubuk i{background:var(--kirmizi)}
 @keyframes nabiz{50%{background:rgba(184,74,62,.26)}}
-.sayac-uyari{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--kirmizi);letter-spacing:.08em;
-  margin-top:7px;line-height:1.5;text-align:center}
+.sayac-uyari{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--kirmizi);letter-spacing:.06em;
+  margin-top:5px;line-height:1.4;text-align:center}
 .bozuk-perde{position:fixed;inset:0;background:rgba(10,14,16,.95);z-index:60;display:flex;flex-direction:column;
   align-items:center;justify-content:center;padding:24px;text-align:center}
 .bozuk-perde h3{font-family:'Antonio',sans-serif;font-size:32px;letter-spacing:.05em;color:var(--kirmizi);text-transform:uppercase}
 .bozuk-perde p{font-size:14px;color:var(--sis);margin-top:10px;line-height:1.6;max-width:340px}
-.elim{border:1px solid var(--altin);background:linear-gradient(180deg,#1D2724,var(--zemin2));padding:13px;margin-top:11px}
-.elim .ustsatir{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.elim{border:1px solid var(--altin);background:linear-gradient(180deg,#1D2724,var(--zemin2));padding:8px 10px 9px;margin-top:8px}
+.elim .ustsatir{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
 .elim .baslik{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.18em;color:var(--sis);text-transform:uppercase}
-.elim .toplam{font-family:'Antonio',sans-serif;font-size:34px;line-height:1;color:var(--ak)}
+.elim .toplam{font-family:'Antonio',sans-serif;font-size:22px;line-height:1;color:var(--ak)}
 .elim .toplam.riskli{color:var(--uyari)}
 .elim .toplam.olu{color:var(--kirmizi)}
 .kartlarim{display:flex;gap:7px;justify-content:center;flex-wrap:wrap}
-.kart{width:52px;height:74px;border-radius:6px;background:linear-gradient(160deg,#F5F1E7,#DED7C8);border:1px solid #B9B0A0;
-  color:#171208;position:relative;display:grid;place-items:center;font-family:'Antonio',sans-serif;
-  box-shadow:0 5px 12px rgba(0,0,0,.4);animation:gel .32s ease-out}
-.kart.kir{color:var(--kirmizi)}
-.kart .rakam{font-size:21px;line-height:1}
-.kart .tip{font-size:14px}
-.kart .kose{position:absolute;top:3px;left:4px;font-family:'IBM Plex Mono',monospace;font-size:8px}
+/* klasik iskambil yüzü: iki köşe indeksi + ortada gerçek pip dizilimi */
+.kart{width:54px;height:78px;border-radius:5px;background:#FBF9F4;border:1px solid #C9C2B4;
+  color:#12100C;position:relative;display:block;overflow:hidden;
+  font-family:Georgia,'Times New Roman',serif;font-weight:700;
+  box-shadow:0 4px 10px rgba(0,0,0,.45);animation:gel .32s ease-out}
+.kart.kir{color:#C0392B}
+.kart .kose{position:absolute;font-size:12px;line-height:.95;text-align:center;width:12px}
+.kart .kose i{display:block;font-style:normal;font-size:10px;margin-top:1px}
+.kart .kose.ust{top:3px;left:3px}
+.kart .kose.alt{bottom:3px;right:3px;transform:rotate(180deg)}
+.kart .pipler{position:absolute;inset:12px 15px;display:grid;
+  grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(7,1fr);place-items:center}
+.kart .pipler i{font-style:normal;font-size:11px;line-height:1}
+.kart .as{position:absolute;inset:0;display:grid;place-items:center;font-size:32px;font-style:normal}
+.kart .yuz{position:absolute;inset:11px 13px;border:1px solid currentColor;border-radius:2px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;opacity:.9}
+.kart .yuz b{font-size:20px;line-height:1}
+.kart .yuz i{font-style:normal;font-size:11px;line-height:1}
 .kart .asSec{position:absolute;bottom:-1px;left:-1px;right:-1px;background:var(--altin);color:#171208;
   font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 0;cursor:pointer;border-radius:0 0 5px 5px;letter-spacing:.06em}
-.elim .altnot{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--sis);margin-top:9px;line-height:1.6;text-align:center}
+.elim .altnot{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--sis);margin-top:6px;line-height:1.5;text-align:center}
 .atlandi{border:1px solid var(--uyari);color:var(--uyari);font-family:'IBM Plex Mono',monospace;font-size:10px;
   padding:7px;text-align:center;margin-top:9px;letter-spacing:.08em}
 
@@ -147,17 +159,17 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
   text-align:center;margin-bottom:4px}
 .perde .altbaslik{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;color:var(--sis);margin-bottom:18px;text-align:center}
 .kazanan-el{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px}
-.kazanan-el .kart{width:60px;height:86px;box-shadow:0 8px 20px rgba(0,0,0,.55),0 0 0 1px var(--altin)}
-.kazanan-el .kart .rakam{font-size:25px}
+.kazanan-el .kart{width:62px;height:90px;box-shadow:0 8px 20px rgba(0,0,0,.55),0 0 0 1px var(--altin)}
 .digerleri{width:100%;max-width:400px;margin-top:16px;display:flex;flex-direction:column;gap:7px}
 .dig-satir{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;border:1px solid var(--cizgi);
   background:var(--zemin2);padding:7px 9px}
 .dig-satir.patlak{border-color:rgba(184,74,62,.5)}
 .dig-satir .ad{font-family:'Antonio',sans-serif;font-size:14px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dig-satir .kartlar{display:flex;gap:3px}
-.dig-satir .mm{width:17px;height:24px;border-radius:2px;background:linear-gradient(160deg,#F2EEE4,#DCD5C6);border:1px solid #B9B0A0;
-  color:#171208;font-family:'Antonio',sans-serif;font-size:8px;display:grid;place-items:center;line-height:1}
-.dig-satir .mm.kir{color:var(--kirmizi)}
+.dig-satir .mm{width:18px;height:25px;border-radius:2px;background:#FBF9F4;border:1px solid #C9C2B4;
+  color:#12100C;font-family:Georgia,serif;font-weight:700;font-size:8px;display:grid;place-items:center;line-height:1}
+.dig-satir .mm i{font-style:normal;font-size:7px;display:block}
+.dig-satir .mm.kir{color:#C0392B}
 .dig-satir .top{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;min-width:34px;text-align:right}
 .dig-satir .top.patladi{color:var(--kirmizi)}
 .dig-satir .top.kazandi{color:var(--altin2)}
@@ -195,7 +207,7 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 <div class="sarma">
 
   <div class="ust">
-    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v2</small></div>
+    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA V3</small></div>
     <div class="kod gizli" id="kodRozet">ODA<b id="odaKodu">----</b></div>
   </div>
 
@@ -293,7 +305,6 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
     <div class="masa-sargi" id="masaSargi">
       <div class="cuha" id="cuha"></div>
       <div class="orta" id="ortaAlan">
-        <div class="deste-gorsel"><span></span><span></span><span></span></div>
         <div class="bilgi" id="ortaBilgi"></div>
       </div>
       <div id="koltuklar"></div>
@@ -320,12 +331,12 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
       <button class="dugme bos" id="pasBtn" disabled style="margin:0;font-size:15px;font-family:'Antonio',sans-serif;letter-spacing:.08em;padding:14px">Bu Turda Almam</button>
     </div>
     <button class="dugme yesil" id="hazirBtn" disabled>✓ Kartlarım Hazır</button>
+    <button class="dugme gizli" id="yeniElBtn">Sonraki Eli Dağıt</button>
     <p class="durum" id="oyunDurum"></p>
 
     <div class="kutu">
       <h2><span>Kasa tablosu</span><em id="turEtiket"></em></h2>
       <div id="skorListe"></div>
-      <button class="dugme gizli" id="yeniElBtn" style="margin-top:9px">Sonraki Eli Dağıt</button>
       <button class="dugme bos gizli" id="bitirBtn">Oyunu bitir (sonucu göster)</button>
       <button class="dugme bos gizli" id="sifirlaBtn">Masayı sıfırla (yeni oyun)</button>
       <button class="dugme bos gizli" id="kapatBtn" style="border-color:var(--kirmizi);color:var(--kirmizi)">Masayı tamamen kapat</button>
@@ -422,8 +433,8 @@ function hataBildir(e){
   if(yer) yer.textContent='Bir işlem tamamlanamadı ('+kod+'). Tekrar dene.';
 }
 const kacir = s => String(s==null?'':s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
-const TIPLER = [{s:'♠️',k:0},{s:'♥️',k:1},{s:'♦️',k:1},{s:'♣️',k:0}];
-const RAKAMLAR = ['2','3','4','5','6','7','8','9','10','V','K','P','A'];
+const TIPLER = [{s:'♠',k:0},{s:'♥',k:1},{s:'♦',k:1},{s:'♣',k:0}];
+const RAKAMLAR = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
 
 /* ---------- kart mantığı ---------- */
 function desteKur(){
@@ -441,7 +452,8 @@ function rast(n){
   while(guvenlik++<10000){crypto.getRandomValues(b);if(b[0]<s)return b[0]%n;}
   return Math.floor(Math.random()*n);
 }
-const sabitDeger = k => (k.r==='V'||k.r==='K'||k.r==='P') ? 10 : (k.r==='A' ? 0 : k.d);
+const RESIMLI = ['V','K','P','J','Q'];   // K zaten iki listede de 10 ediyor
+const sabitDeger = k => (RESIMLI.includes(k.r)||k.r==='K') ? 10 : (k.r==='A' ? 0 : k.d);
 /* oyuncunun seçtiği as değerlerine göre toplam (kendi ekranındaki gösterim) */
 function toplamHesap(kartlar, asSec){
   let t=0, i=0;
@@ -461,6 +473,28 @@ function enIyiToplam(kartlar){
 function kesinPatlak(kartlar){
   let t=0;(kartlar||[]).forEach(k=>{ t += (k.r==='A') ? 1 : sabitDeger(k); });
   return t>21;
+}
+/* ---------- klasik kart yüzü ---------- */
+const PIP = {
+  '2':[[2,1],[2,7]], '3':[[2,1],[2,4],[2,7]], '4':[[1,1],[3,1],[1,7],[3,7]],
+  '5':[[1,1],[3,1],[2,4],[1,7],[3,7]], '6':[[1,1],[3,1],[1,4],[3,4],[1,7],[3,7]],
+  '7':[[1,1],[3,1],[2,2],[1,4],[3,4],[1,7],[3,7]],
+  '8':[[1,1],[3,1],[2,2],[1,4],[3,4],[2,6],[1,7],[3,7]],
+  '9':[[1,1],[3,1],[1,3],[3,3],[2,4],[1,5],[3,5],[1,7],[3,7]],
+  '10':[[1,1],[3,1],[2,2],[1,3],[3,3],[1,5],[3,5],[2,6],[1,7],[3,7]]
+};
+/* iOS ♥ ve ♦ işaretlerini emoji yapıyor; \uFE0E metin biçimini zorlar */
+const sembol = t => String(t||'').replace(/\uFE0F/g,'')+'\uFE0E';
+function kartYuz(k, ek, ekSinif){
+  const s=sembol(k.t), kir=k.k?' kir':'';
+  const kose='<span class="kose ust">'+k.r+'<i>'+s+'</i></span>'+
+             '<span class="kose alt">'+k.r+'<i>'+s+'</i></span>';
+  let orta;
+  if(PIP[k.r]) orta='<span class="pipler">'+PIP[k.r]
+      .map(([c,r])=>'<i style="grid-column:'+c+';grid-row:'+r+'">'+s+'</i>').join('')+'</span>';
+  else if(k.r==='A') orta='<span class="as">'+s+'</span>';
+  else orta='<span class="yuz"><b>'+k.r+'</b><i>'+s+'</i></span>';
+  return '<div class="kart'+kir+(ekSinif?' '+ekSinif:'')+'">'+kose+orta+(ek||'')+'</div>';
 }
 const imzali = n => (n>0?'+':n<0?'−':'') + Math.abs(n||0).toLocaleString('tr-TR') + ' ₺';
 
@@ -810,7 +844,7 @@ function masaCiz(oyn){
     const adet = dz.adet||0;
     const acikEl = acikEller && acikEller[u] ? acikEller[u] : null;
     const kartlar = acikEl
-      ? (acikEl.kartlar||[]).map(k=>'<span class="mini acikKart'+(k.k?' kir':'')+'">'+k.r+'</span>').join('')
+      ? (acikEl.kartlar||[]).map(k=>'<span class="mini acikKart'+(k.k?' kir':'')+'">'+k.r+'<i>'+sembol(k.t)+'</i></span>').join('')
       : Array.from({length:adet},()=>'<span class="mini"></span>').join('');
     const rozet = acikEl
       ? '<span class="rozet '+(acikEl.patlak?'':'hazir')+'">'+acikEl.toplam+(acikEl.patlak?' ✖':'')+'</span>'
@@ -834,8 +868,7 @@ function elimCiz(){
   $('kartlarim').innerHTML = kartlar.map((k,i)=>{
     const asDugme = k.r==='A'
       ? '<span class="asSec" data-i="'+i+'">'+((asSec[i]||11)===11?'11 ▸ 1':'1 ▸ 11')+'</span>' : '';
-    return '<div class="kart'+(k.k?' kir':'')+'"><span class="kose">'+k.r+k.t+'</span>'+
-      '<div style="text-align:center"><div class="rakam">'+k.r+'</div><div class="tip">'+k.t+'</div></div>'+asDugme+'</div>';
+    return kartYuz(k, asDugme);
   }).join('') || '<p class="altnot" style="opacity:.6">kart bekleniyor…</p>';
   const t = toplamHesap(kartlar, asSec);
   const kp = kesinPatlak(kartlar);
@@ -1361,13 +1394,12 @@ function perdeAc(){
   $('perdeAlt').textContent = masa.sonMesaj||'';
   $('perdeKazananEl').innerHTML = kazananlar.map(([u,e])=>
     '<div style="text-align:center;margin:0 6px"><div style="display:flex;gap:6px;justify-content:center">'+
-    (e.kartlar||[]).map(k=>'<div class="kart'+(k.k?' kir':'')+'"><span class="kose">'+k.r+k.t+'</span>'+
-      '<div style="text-align:center"><div class="rakam">'+k.r+'</div><div class="tip">'+k.t+'</div></div></div>').join('')+
+    (e.kartlar||[]).map(k=>kartYuz(k)).join('')+
     '</div><div class="mono" style="font-size:11px;color:var(--altin2);margin-top:7px;letter-spacing:.1em">'+
     kacir(oyuncular[u]?.ad||'')+' · '+e.toplam+'</div></div>').join('');
   $('perdeDigerleri').innerHTML = Object.entries(eller).filter(([,e])=>!e.kazandi).map(([u,e])=>
     '<div class="dig-satir'+(e.patlak?' patlak':'')+'"><div class="ad">'+kacir(oyuncular[u]?.ad||'')+'</div>'+
-    '<div class="kartlar">'+(e.kartlar||[]).map(k=>'<span class="mm'+(k.k?' kir':'')+'">'+k.r+'</span>').join('')+'</div>'+
+    '<div class="kartlar">'+(e.kartlar||[]).map(k=>'<span class="mm'+(k.k?' kir':'')+'">'+k.r+'<i>'+sembol(k.t)+'</i></span>').join('')+'</div>'+
     '<span class="top'+(e.patlak?' patladi':'')+'">'+e.toplam+(e.patlak?' ✖':'')+'</span></div>').join('');
   $('perde').classList.remove('gizli');
   perdeAcilis=Date.now();
