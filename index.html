@@ -205,31 +205,13 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 .defter-kayit{border:1px solid var(--cizgi);background:var(--zemin);padding:9px 11px;margin-bottom:6px;
   font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--sis);line-height:1.7}
 .defter-kayit b{color:var(--ak)}
-
-/* ============ GEÇİCİ HATA AYIKLAMA ARACI — hatalar çözülünce bu blok +
-   #hataPanel + ilgili script kısmı tamamen kaldırılacak ============ */
-#hataPanel{position:fixed;top:8px;left:8px;z-index:80;display:flex;gap:6px;align-items:center}
-#oyunSuresi{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--sis);
-  background:rgba(18,23,26,.9);border:1px solid var(--cizgi2);padding:4px 7px;border-radius:6px}
-#hataBtn{background:var(--kirmizi);color:#fff;border:none;border-radius:14px;padding:6px 11px;
-  font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.05em;cursor:pointer;
-  box-shadow:0 3px 10px rgba(0,0,0,.45)}
-#hataBtn:active{transform:scale(.96)}
-#hataBtn:disabled{opacity:.5}
 </style>
 </head>
 <body>
-<!-- GEÇİCİ HATA AYIKLAMA ARACI: hatalar bulunup düzeltildikten sonra bu panel
-     ve script'teki ilgili logla()/hataBtn kodu tamamen kaldırılacak. -->
-<div id="hataPanel" class="gizli">
-  <span id="oyunSuresi">⏱ 00:00</span>
-  <button id="hataBtn">🐞 Hata Oldu</button>
-</div>
-
 <div class="sarma">
 
   <div class="ust">
-    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v12 (hata ayıklama)</small></div>
+    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v11</small></div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="kod gizli" id="izleyiciRozet" title="izleyen kişi sayısı">👀 <b id="izleyiciSayi">0</b></div>
       <div class="kod gizli" id="kodRozet">ODA<b id="odaKodu">----</b></div>
@@ -736,7 +718,6 @@ function bagla(){
   if(baglandi) return;
   baglandi=true;
   $('odaKodu').textContent=oda; $('kodRozet').classList.remove('gizli');
-  $('hataPanel').classList.remove('gizli');   // GEÇİCİ HATA AYIKLAMA ARACI
   $('ustAlt').textContent = (izleyici ? 'İZLEYİCİ' : 'ONLINE MASA')+' · '+SURUM;
   if(!geriDonus) oyuncular[uid]=oyuncular[uid]||{};   // yeni katılımda ilk damgaya izin
   cevrimiciYenile(true);
@@ -1015,9 +996,8 @@ let hamleBekliyor=false, hamleDinleyici=null;
 function istek(tip){
   if(hamleBekliyor) return;
   hamleBekliyor=true;
-  logla('ISTEK_GONDERILDI',{tip,gonderenAd:benimAd});   // GEÇİCİ HATA AYIKLAMA ARACI
   $('kartAlBtn').disabled=true;$('pasBtn').disabled=true;$('hazirBtn').disabled=true;
-  const hamleZamanAsimi=setTimeout(()=>{ logla('ISTEK_ZAMAN_ASIMI_CLIENT',{tip,gonderenAd:benimAd}); bitir(); },8000);
+  const hamleZamanAsimi=setTimeout(()=>bitir(),8000);
   function bitir(){
     if(!hamleBekliyor) return;
     hamleBekliyor=false; clearTimeout(hamleZamanAsimi);
@@ -1030,9 +1010,8 @@ function istek(tip){
   // anında açabiliyordu (tam da düzeltilmek istenen yarış durumunun aynısı).
   Promise.resolve(set(r,{uid,tip,ts:Date.now()})).then(()=>{
     if(!hamleBekliyor) return;         // bu arada zaman aşımına uğramış olabilir
-    hamleDinleyici=onValue(r,s=>{ if(s.val()===null){ logla('ISTEK_KUYRUKTAN_SILINDI',{tip,gonderenAd:benimAd}); bitir(); } });
+    hamleDinleyici=onValue(r,s=>{ if(s.val()===null) bitir(); });
   }).catch(e=>{ console.error('istek yollanamadı',e);
-    logla('ISTEK_GONDERME_HATASI',{tip,gonderenAd:benimAd,hata:e&&(e.code||e.message)});
     bitir();
     $('oyunDurum').textContent='Bağlantı sorunu — hamlen gönderilemedi, tekrar dene.'; });
 }
@@ -1163,10 +1142,6 @@ function tik(){
   // uyanınca perde ekranda kalıyordu.
   if(perdeAcilis && Date.now()-perdeAcilis>PERDE_SURESI) perdeKapat();
   sayacCiz();
-  if(masa&&masa.kuruldu){                    // GEÇİCİ HATA AYIKLAMA ARACI
-    const sn=Math.max(0,Math.round((Date.now()-masa.kuruldu)/1000));
-    $('oyunSuresi').textContent='⏱ '+String(Math.floor(sn/60)).padStart(2,'0')+':'+String(sn%60).padStart(2,'0');
-  }
   // ZAMANA BAĞLI denetim: masa tamamen dursa (hiç veri değişmese) bile kurtarma çalışsın
   if(Date.now()-sonTik>2000){
     sonTik=Date.now();
@@ -1307,12 +1282,10 @@ async function istekleriIsle(hepsi){
     for(const [anahtar,ist] of Object.entries(hepsi).sort((a,b)=>a[1].ts-b[1].ts)){
       try{
         const m=(await get(yol('masa'))).val();
-        const istAd=oyuncular[ist.uid]?.ad||ist.uid;
-        logla('ISTEK_ISLENIYOR',{tip:ist.tip,oyuncu:istAd,masaSira:oyuncular[m&&m.sira]?.ad||(m&&m.sira),faz:m&&m.faz});  // GEÇİCİ
-        if(!m||m.faz!=='el'){ logla('ISTEK_REDDI_FAZ',{tip:ist.tip,oyuncu:istAd,faz:m&&m.faz}); continue; }
-        if(m.sira!==ist.uid){ logla('ISTEK_REDDI_SIRA',{tip:ist.tip,istekSahibi:istAd,gercekSira:oyuncular[m.sira]?.ad||m.sira}); continue; }
+        if(!m||m.faz!=='el') continue;
+        if(m.sira!==ist.uid) continue;        // sırası olmayan hiçbir komut kabul edilmez
         const dz=(await get(yol('acik','durum',ist.uid))).val()||{};
-        if(dz.hazir){ logla('ISTEK_REDDI_ZATEN_HAZIR',{tip:ist.tip,oyuncu:istAd}); continue; }
+        if(dz.hazir) continue;
         const baslangic=Date.now();           // "komuttan 1 sn sonra geçiş" burada başlar
         if(ist.tip==='hazir'){
           await update(yol('acik','durum',ist.uid),{hazir:true,sonHamle:'hazir'});
@@ -1352,21 +1325,17 @@ async function kartVerIc(hedef){
    sunucu onayı gelmeden çözülmez, ama zayıf bağlantıda emin olmak için
    yazımdan sonra da adet'i tekrar okuyup teyit ediyoruz. */
 async function kartVerGuvenli(hedef){
-  const hedefAd=oyuncular[hedef]?.ad||hedef;
   for(let deneme=1; deneme<=3; deneme++){
     const oncekiAdet=((await get(yol('acik','durum',hedef))).val()||{}).adet||0;
     try{
       await kartVer(hedef);
-      logla('KART_VERILDI',{oyuncu:hedefAd,deneme,oncekiAdet});   // GEÇİCİ HATA AYIKLAMA ARACI
       return true;
     }catch(e){
       console.error('kart verme denemesi '+deneme+' başarısız',e);
-      logla('KART_VERME_HATASI',{oyuncu:hedefAd,deneme,hata:e&&(e.code||e.message)});
       const sonrakiAdet=((await get(yol('acik','durum',hedef))).val()||{}).adet||0;
-      if(sonrakiAdet>oncekiAdet){ logla('KART_ASLINDA_YAZILMIS',{oyuncu:hedefAd,deneme}); return true; }
+      if(sonrakiAdet>oncekiAdet) return true;   // aslında yazılmış, sadece onay client'a dönmemiş
     }
   }
-  logla('KART_VERILEMEDI_3_DENEME',{oyuncu:hedefAd});
   return false;
 }
 /* deste biterse yeniden karılır ama bu elde dağıtılmış kartlar çıkarılır,
@@ -1405,7 +1374,7 @@ async function siraIlerletIc(baslangicTs){
   const liste=sunucuListesi(guncelOyn).filter(u=>durum[u]);
   if(!liste.length) return;
   const bekleyenler=liste.filter(u=>!durum[u]?.hazir);
-  if(!bekleyenler.length){ logla('SIRA_HERKES_HAZIR_EL_ACILIYOR',{}); await eliAc(); return; }
+  if(!bekleyenler.length){ await eliAc(); return; }
   const simdiki=liste.indexOf(m.sira);
   let sonraki=null;
   for(let adim=1;adim<=liste.length;adim++){
@@ -1414,12 +1383,10 @@ async function siraIlerletIc(baslangicTs){
   }
   const hedefUid=sonraki||bekleyenler[0];
   const gecen=baslangicTs?Date.now()-baslangicTs:0;
-  logla('SIRA_HESAPLANDI',{eskiSira:oyuncular[m.sira]?.ad||m.sira,yeniSira:oyuncular[hedefUid]?.ad||hedefUid,gecenMs:gecen});   // GEÇİCİ
   if(gecen<SIRA_GECIS_MS) await new Promise(r=>setTimeout(r,SIRA_GECIS_MS-gecen));
   // çevrimdışı oyuncu bütün masayı 45 sn bekletmesin
   const sure=(guncelOyn[hedefUid]&&guncelOyn[hedefUid].cevrimici===false)?KISA_SURE_MS:SURE_MS;
   await update(yol('masa'),{sira:hedefUid, sonTarih: Date.now()+sure});
-  logla('SIRA_YAZILDI',{yeniSira:oyuncular[hedefUid]?.ad||hedefUid});
 }
 async function hepsiHazirMi(){
   const durum=(await get(yol('acik','durum'))).val()||{};
@@ -1621,53 +1588,6 @@ $('kopyalaBtn').addEventListener('click',gv(async()=>{
   try{ await navigator.clipboard.writeText(metin); $('beklemeDurum').textContent='Kod ve link kopyalandı, gruba yapıştır.'; }
   catch(e){ $('beklemeDurum').textContent='Kod: '+oda+' — elle kopyala.'; }
 }));
-
-/* ============ GEÇİCİ HATA AYIKLAMA ARACI ============
-   logla(): kart al/pas/hazır/sıra ile ilgili teknik adımları odanın kendi
-   Firebase dalına (gunluk) zaman damgasıyla yazar. Sadece anlık ekrana değil,
-   TÜM oyuncuların cihazlarında olanları tek bir yerde toplar — çünkü
-   bildirilen hatalar (kart gelmedi, sıra atladı vb.) birden fazla cihazın
-   etkileşiminden doğuyor, tek cihazın günlüğü yetmiyor.
-   Hatalar bulunup düzeltildikten sonra bu blok, #hataPanel ve ilgili tüm
-   logla(...) çağrıları kaldırılacak. */
-function logla(tip, veri){
-  if(!oda) return;
-  Promise.resolve(push(yol('gunluk'),{tip,veri:veri||null,ts:Date.now()})).catch(()=>{});
-}
-$('hataBtn').addEventListener('click',gv(async()=>{
-  if(!oda) return;
-  $('hataBtn').disabled=true;
-  try{
-    logla('🐞_HATA_ISARETLENDI',{
-      bildirenAd:benimAd, bildirenUid:uid, masaSira:masa&&masa.sira, masaFaz:masa&&masa.faz,
-      benimHazirMi:!!(acik&&acik.durum&&acik.durum[uid]&&acik.durum[uid].hazir),
-      elimKartSayisi:(elim&&elim.kartlar||[]).length
-    });
-    const [gunlukSnap,sohbetSnap]=await Promise.all([get(yol('gunluk')),get(yol('sohbet'))]);
-    const gunluk=Object.values(gunlukSnap.val()||{});
-    const sohbetOlaylari=Object.values(sohbetSnap.val()||{}).map(m=>({
-      ts:m.ts, tip:m.sis?'SISTEM_MESAJI':'SOHBET_MESAJI', veri:{ad:m.ad||null,metin:m.metin}}));
-    const hepsi=[...gunluk,...sohbetOlaylari].sort((a,b)=>a.ts-b.ts);
-    const kurulusTs=(masa&&masa.kuruldu)||hepsi[0]?.ts||Date.now();
-    const disaAktar={
-      oda, aktaranAd:benimAd, aktaranUid:uid, aktarimZamaniISO:new Date().toISOString(),
-      masaKurulusTs:kurulusTs, guncelMasa:masa, guncelOyuncular:oyuncular,
-      olaylar:hepsi.map(o=>({
-        zamanISO:new Date(o.ts).toISOString(),
-        oyunSaniyesi:Math.round((o.ts-kurulusTs)/1000),
-        tip:o.tip, veri:o.veri
-      }))
-    };
-    const blob=new Blob([JSON.stringify(disaAktar,null,2)],{type:'application/json'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url; a.download='kurpiyer-hata-'+oda+'-'+Date.now()+'.json';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),4000);
-  }catch(e){ console.error('hata kaydı indirilemedi',e); alert('Kayıt indirilemedi: '+(e.code||e.message)); }
-  finally{ $('hataBtn').disabled=false; }
-}));
-/* ============ /GEÇİCİ HATA AYIKLAMA ARACI (üstü) — altta da logla() çağrıları var ============ */
 
 /* ---------- sohbet ---------- */
 function sistem(metin){ if(oda) Promise.resolve(push(yol('sohbet'),{sis:true,metin,ts:Date.now()})).catch(()=>{}); }
