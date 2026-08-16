@@ -211,7 +211,7 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 <div class="sarma">
 
   <div class="ust">
-    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v10.2</small></div>
+    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v10.3</small></div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="kod gizli" id="izleyiciRozet" title="izleyen kişi sayısı">👀 <b id="izleyiciSayi">0</b></div>
       <div class="kod gizli" id="kodRozet">ODA<b id="odaKodu">----</b></div>
@@ -348,22 +348,21 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
     <div class="kutu">
       <h2><span>Kasa tablosu</span><em id="turEtiket"></em></h2>
       <div id="skorListe"></div>
-      <button class="dugme bos gizli" id="bitirBtn">Oyunu bitir (sonucu göster)</button>
-      <button class="dugme bos gizli" id="sifirlaBtn">Masayı sıfırla (yeni oyun)</button>
-      <button class="dugme bos gizli" id="kapatBtn" style="border-color:var(--kirmizi);color:var(--kirmizi)">Masayı tamamen kapat</button>
-    </div>
 
-    <div class="kutu">
-      <h2>Mesajlar</h2>
-      <div class="sohbet" id="sohbetAkis"></div>
-      <div class="laflar" id="laflar">
-        <button>hadi be</button><button>ver kartı</button><button>blöf bu</button>
-        <button>ben hazırım</button><button>şansa bak</button><button>😂</button>
-      </div>
+      <h2 style="margin-top:14px">Mesajlar</h2>
       <div class="sohbet-giris">
         <input id="mesajInput" maxlength="120" placeholder="Bir şeyler yaz…" autocomplete="off">
         <button id="gonderBtn">Yolla</button>
       </div>
+      <div class="laflar" id="laflar" style="margin-top:7px">
+        <button>hadi be</button><button>ver kartı</button><button>blöf bu</button>
+        <button>ben hazırım</button><button>şansa bak</button><button>😂</button>
+      </div>
+      <div class="sohbet" id="sohbetAkis" style="margin-top:2px"></div>
+
+      <button class="dugme bos gizli" id="bitirBtn" style="margin-top:11px">Oyunu bitir (sonucu göster)</button>
+      <button class="dugme bos gizli" id="sifirlaBtn">Masayı sıfırla (yeni oyun)</button>
+      <button class="dugme bos gizli" id="kapatBtn" style="border-color:var(--kirmizi);color:var(--kirmizi)">Masayı tamamen kapat</button>
     </div>
 
     <button class="dugme bos" id="cikBtn2">Masadan kalk</button>
@@ -1606,7 +1605,7 @@ function mesajBaloncuguGoster(gonderenUid, metin, ts){
 function sohbetCiz(veri){
   const liste=Object.values(veri||{}).sort((x,y)=>x.ts-y.ts);
   const a=$('sohbetAkis');
-  a.innerHTML=liste.slice(-40).map(m=>m.sis
+  a.innerHTML=liste.slice(-5).map(m=>m.sis
     ? '<div class="mesaj sis">'+kacir(m.metin)+'</div>'
     : '<div class="mesaj"><b>'+kacir(m.ad)+'</b>'+kacir(m.metin)+'</div>').join('');
   a.scrollTop=a.scrollHeight;
