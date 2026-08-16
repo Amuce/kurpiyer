@@ -200,6 +200,10 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
   font-size:14px;padding:0 14px;cursor:pointer}
 .laflar{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px}
 .laflar button{background:var(--zemin);border:1px solid var(--cizgi);color:var(--sis);font-size:11.5px;padding:5px 9px;cursor:pointer}
+/* masa altındaki şerit: tek satır kalsın, dikeyde yer yemesin */
+#hizliMesajlar{flex-wrap:nowrap;align-items:center;gap:4px;margin:4px 0 6px}
+#hizliMesajlar button{font-size:10px;padding:4px 6px;white-space:nowrap}
+#desteDegistirBtn{border-color:var(--cizgi2);color:var(--altin2)}
 
 /* defter */
 .defter-kayit{border:1px solid var(--cizgi);background:var(--zemin);padding:9px 11px;margin-bottom:6px;
@@ -211,7 +215,7 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 <div class="sarma">
 
   <div class="ust">
-    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v11</small></div>
+    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v13</small></div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="kod gizli" id="izleyiciRozet" title="izleyen kişi sayısı">👀 <b id="izleyiciSayi">0</b></div>
       <div class="kod gizli" id="kodRozet">ODA<b id="odaKodu">----</b></div>
@@ -321,9 +325,9 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 
     <p class="not" id="sonOlay" style="min-height:15px"></p>
 
-    <div class="laflar" id="hizliMesajlar" style="justify-content:center">
-      <button>⚡ Hızlı oyna</button><button>Noluyor yaw!</button><button>🔥 Masa hızlı!</button>
-      <button id="desteDegistirBtn" style="margin-left:auto">Deste Değiştir</button>
+    <div class="laflar" id="hizliMesajlar">
+      <button id="desteDegistirBtn">Deste 1/8</button>
+      <button style="margin-left:auto">⚡ Hızlı oyna</button><button>Noluyor yaw!</button><button>🔥 Masa hızlı!</button>
     </div>
 
     <div class="sayac-kutu gizli" id="sayacKutu">
@@ -826,7 +830,7 @@ function ciz(){
   masaCiz(oyn);
   elimCiz();
   skorCiz(oyn);
-  $('desteDegistirBtn').textContent = 'Deste Değiştir · '+(masa.desteSayisi||1)+'/8';
+  $('desteDegistirBtn').textContent = 'Deste '+(masa.desteSayisi||1)+'/8';
 
   const durum=(acik&&acik.durum)||{};
   const benimDurum=durum[uid]||{};
@@ -1353,18 +1357,30 @@ async function desteTazele(){
   return yeni.length?yeni:desteKur(guncelMasa.desteSayisi);
 }
 
-/* Sıra ilerletme tek bir kuyrukta sıraya giriyor (aynı deste kilidi gibi) —
-   eş zamanlı çağrılar üst üste binip masa.sira'yı tutarsız sırayla
-   değiştirmesin diye. baslangicTs verilirse, o zamandan bu yana SIRA_GECIS_MS
-   kadar geçmemişse aradaki fark kadar beklenir (yani "komuttan 1 sn sonra
-   geçiş"); kart verme birkaç deneme aldıysa ve süre zaten dolmuşsa fazladan
-   beklenmez, hemen devam edilir. */
-const SIRA_GECIS_MS=1000;
-let siraKilidi=Promise.resolve();
+/* 3-4 SANİYELİK GECİKMENİN SEBEBİ VE ÇÖZÜMÜ:
+   ESKİ HÂLİ çağrıları bir KUYRUĞA diziyordu. Ama siraIlerlet 6 ayrı yerden
+   çağrılıyor ve bunlardan ciz() (her veri değişiminde!) ile kurtarmaKontrol
+   (her 2 sn) aynı anda tetikleniyordu. Örnek: rakip "hazır" der →
+   (1) istek işleyici siraIlerlet(baslangic) → 1 sn bekle
+   (2) hazir=true yazılınca ciz() tetiklenir → siraIlerlet() kuyruğa girer → 1 sn daha
+   (3) kurtarmaKontrol → siraIlerlet() → 1 sn daha
+   Kuyruk bunları arka arkaya çalıştırdığı için beklemeler TOPLANIYOR ve sıra
+   ancak 3-4 sn sonra geçiyordu — bildirilen hata tam olarak buydu.
+   YENİ HÂLİ: kuyruk yok. Bir geçiş işlenirken gelen ikinci çağrı sessizce
+   DÜŞÜRÜLÜR — çünkü işlemekte olan çağrı zaten en güncel durumu okuyup doğru
+   sonucu yazacak, tekrarına gerek yok. Ayrıca bekleme yalnızca oyuncunun
+   KENDİ hamlesinde (baslangicTs verildiğinde) uygulanır; ciz()/kurtarma gibi
+   emniyet yolları zaten geciken bir durumu düzeltiyor, üstüne 1 sn eklemez. */
+const SIRA_GECIS_MS=1000, SIRA_KILIT_EMNIYET_MS=15000;
+let siraIsleniyor=false, siraIslemBaslangici=0;
 function siraIlerlet(baslangicTs){
-  const p=siraKilidi.then(()=>siraIlerletIc(baslangicTs),()=>siraIlerletIc(baslangicTs));
-  siraKilidi=p.catch(()=>{});
-  return p;
+  // beklenmedik bir hata bayrağı takılı bırakırsa masa sonsuza kadar donmasın
+  if(siraIsleniyor && Date.now()-siraIslemBaslangici>SIRA_KILIT_EMNIYET_MS) siraIsleniyor=false;
+  if(siraIsleniyor) return Promise.resolve();
+  siraIsleniyor=true; siraIslemBaslangici=Date.now();
+  return Promise.resolve(siraIlerletIc(baslangicTs))
+    .catch(e=>{ console.error('sıra ilerletilemedi',e); })
+    .finally(()=>{ siraIsleniyor=false; });
 }
 async function siraIlerletIc(baslangicTs){
   const durum=(await get(yol('acik','durum'))).val()||{};
@@ -1382,8 +1398,16 @@ async function siraIlerletIc(baslangicTs){
     if(!durum[aday]?.hazir){sonraki=aday;break;}
   }
   const hedefUid=sonraki||bekleyenler[0];
-  const gecen=baslangicTs?Date.now()-baslangicTs:0;
-  if(gecen<SIRA_GECIS_MS) await new Promise(r=>setTimeout(r,SIRA_GECIS_MS-gecen));
+  /* Bekleme SADECE (a) oyuncunun kendi hamlesinde (baslangicTs verilmişse) VE
+     (b) sıra gerçekten BAŞKASINA geçiyorsa uygulanır; komut anından itibaren
+     tam 1 sn olsun ki kim ne yaptı görülebilsin. Kart verme birkaç deneme
+     aldıysa ve süre zaten dolduysa fazladan beklenmez. Sıra aynı kişide
+     kalıyorsa (herkes hazır, tek karar verecek o kaldı) beklemeden süresi
+     yenilenir. Emniyet/kurtarma çağrılarında (baslangicTs yok) hiç beklenmez. */
+  if(baslangicTs && hedefUid!==m.sira){
+    const gecen=Date.now()-baslangicTs;
+    if(gecen<SIRA_GECIS_MS) await new Promise(r=>setTimeout(r,SIRA_GECIS_MS-gecen));
+  }
   // çevrimdışı oyuncu bütün masayı 45 sn bekletmesin
   const sure=(guncelOyn[hedefUid]&&guncelOyn[hedefUid].cevrimici===false)?KISA_SURE_MS:SURE_MS;
   await update(yol('masa'),{sira:hedefUid, sonTarih: Date.now()+sure});
