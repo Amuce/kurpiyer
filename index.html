@@ -89,15 +89,16 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 .koltuk .kasa{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--sis);margin-top:1px}
 .koltuk .kartcik{display:flex;gap:2px;justify-content:center;margin-bottom:3px;min-height:26px;align-items:flex-end}
 .mini{width:17px;height:24px;border-radius:2.5px;background:repeating-linear-gradient(45deg,#2B3A38 0 4px,#22302E 4px 8px);
-  border:1px solid var(--cizgi2);animation:gel .32s ease-out}
+  border:1px solid var(--cizgi2)}
+.mini.yeni{animation:gel .32s ease-out}
 .mini.acikKart{background:linear-gradient(160deg,#F2EEE4,#DCD5C6);border-color:#B9B0A0;color:#171208;
   font-family:'Antonio',sans-serif;font-size:9px;display:grid;place-items:center;line-height:1}
 .mini.acikKart.kir{color:var(--kirmizi)}
 @keyframes gel{from{opacity:0;transform:translateY(-26px) scale(.7)}to{opacity:1;transform:none}}
-.koltuk .rozet{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.1em;padding:2px 5px;margin-top:3px;
-  display:inline-block;border:1px solid var(--cizgi2);color:var(--sis)}
-.koltuk .rozet.hazir{color:var(--yesil);border-color:var(--yesil)}
-.koltuk .rozet.sira{color:var(--altin2);border-color:var(--altin2)}
+.koltuk .rozet{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.08em;padding:2px 5px;margin-top:3px;
+  display:inline-block;border:1px solid var(--cizgi2);color:var(--sis);white-space:nowrap}
+.koltuk .rozet.hazir{color:var(--yesil);border-color:var(--yesil);background:rgba(110,155,118,.12)}
+.koltuk .rozet.sira{color:var(--altin2);border-color:var(--altin2);background:rgba(200,168,99,.12)}
 .koltuk.aktif .ad{color:var(--altin2)}
 .koltuk.aktif::before{content:"";position:absolute;inset:-7px -5px;border:1px solid var(--altin2);opacity:.55}
 .koltuk.ben .ad::after{content:" (sen)";font-size:9px;color:var(--sis)}
@@ -129,7 +130,8 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 .kartlarim{display:flex;gap:7px;justify-content:center;flex-wrap:wrap}
 .kart{width:52px;height:74px;border-radius:6px;background:linear-gradient(160deg,#F5F1E7,#DED7C8);border:1px solid #B9B0A0;
   color:#171208;position:relative;display:grid;place-items:center;font-family:'Antonio',sans-serif;
-  box-shadow:0 5px 12px rgba(0,0,0,.4);animation:gel .32s ease-out}
+  box-shadow:0 5px 12px rgba(0,0,0,.4)}
+.kart.yeni{animation:gel .32s ease-out}
 .kart.kir{color:var(--kirmizi)}
 .kart .rakam{font-size:21px;line-height:1}
 .kart .tip{font-size:14px}
@@ -151,7 +153,7 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
   text-align:center;margin-bottom:4px}
 .perde .altbaslik{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;color:var(--sis);margin-bottom:18px;text-align:center}
 .kazanan-el{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px}
-.kazanan-el .kart{width:60px;height:86px;box-shadow:0 8px 20px rgba(0,0,0,.55),0 0 0 1px var(--altin)}
+.kazanan-el .kart{animation:gel .32s ease-out;width:60px;height:86px;box-shadow:0 8px 20px rgba(0,0,0,.55),0 0 0 1px var(--altin)}
 .kazanan-el .kart .rakam{font-size:25px}
 .digerleri{width:100%;max-width:400px;margin-top:16px;display:flex;flex-direction:column;gap:7px}
 .dig-satir{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;border:1px solid var(--cizgi);
@@ -199,7 +201,7 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 <div class="sarma">
 
   <div class="ust">
-    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v4</small></div>
+    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v5</small></div>
     <div class="kod gizli" id="kodRozet">ODA<b id="odaKodu">----</b></div>
   </div>
 
@@ -501,7 +503,7 @@ function kodUret(){const h='ABCDEFGHJKLMNPRSTUVYZ23456789';let k='';for(let i=0;
 /* ---------- durum ---------- */
 let oda=null, benimAd='', masa=null, oyuncular={}, acik=null, elim=null;
 let sahipMi=false, izleyici=false, dinleyiciler=[], sonPerdeEl=-1, sayimCalisiyor=false;
-let baglandi=false, perdeZaman=null, perdeAcilis=0, masaKapandi=false;
+let baglandi=false, perdeZaman=null, perdeAcilis=0, masaKapandi=false, sonElimHtml=null, sonKartSayim=0;
 let geriDonus=false, oturumKaydi=null, yuklemeUyarisi=null;
 const dinle=(r,fn)=>dinleyiciler.push(onValue(r,fn));
 const kes=()=>{dinleyiciler.forEach(f=>f());dinleyiciler=[];};
@@ -802,7 +804,12 @@ function ciz(){
   Promise.resolve().then(kurtarmaKontrol).catch(e=>console.error('kurtarma',e));
 }
 
-/* --- masa görseli --- */
+/* --- masa görseli ---
+   Veriler herkeste anında güncellenir; ancak kart "düşme" animasyonu YALNIZCA
+   eline yeni kart gelen oyuncunun koltuğunda oynar. Bunun için koltuk iki
+   parçaya ayrıldı: kart alanı ve bilgi alanı. Rozet/kasa değişince kartlara
+   dokunulmaz, dolayısıyla kartlar zıplamaz. */
+let koltukImza='', kartOnbellek={}, bilgiOnbellek={}, sonAdet={};
 function masaCiz(oyn){
   const n=oyn.length;
   $('cuha').classList.toggle('yuvarlak', n<=2);
@@ -810,28 +817,48 @@ function masaCiz(oyn){
   const merkez = benimSira>=0 ? benimSira : 0;
   const durum=(acik&&acik.durum)||{};
   const acikEller=(acik&&acik.eller)||null;
+  const kap=$('koltuklar');
 
-  $('koltuklar').innerHTML = oyn.map(([u,o],i)=>{
-    const kayma = ((i - merkez) + n) % n;
-    const aci = kayma * 2 * Math.PI / n;
-    const yaricap = n<=2 ? 32 : 37;
-    const x = 50 + yaricap * Math.sin(aci);
-    const y = 50 + yaricap * Math.cos(aci);
+  const imza=n+'|'+merkez+'|'+oyn.map(([u])=>u).join(',');
+  if(koltukImza!==imza){
+    koltukImza=imza; kartOnbellek={}; bilgiOnbellek={};
+    kap.innerHTML=oyn.map(([u],i)=>{
+      const kayma=((i-merkez)+n)%n, aci=kayma*2*Math.PI/n, yaricap=n<=2?32:37;
+      return '<div class="koltuk" data-u="'+u+'" style="left:'+(50+yaricap*Math.sin(aci))+
+             '%;top:'+(50+yaricap*Math.cos(aci))+'%">'+
+             '<div class="kartcik"></div><div class="bilgiKol"></div></div>';
+    }).join('');
+  }
+  const cocuklar = kap.children || [];
+
+  oyn.forEach(([u,o],i)=>{
     const dz = durum[u]||{};
     const adet = dz.adet||0;
     const acikEl = acikEller && acikEller[u] ? acikEller[u] : null;
+    const yeniGeldi = adet>(sonAdet[u]||0);          // bu koltuğa kart eklendi mi
     const kartlar = acikEl
       ? (acikEl.kartlar||[]).map(k=>'<span class="mini acikKart'+(k.k?' kir':'')+'">'+k.r+'</span>').join('')
-      : Array.from({length:adet},()=>'<span class="mini"></span>').join('');
+      : Array.from({length:adet},(x,j)=>
+          '<span class="mini'+(yeniGeldi&&j===adet-1?' yeni':'')+'"></span>').join('');
     const rozet = acikEl
       ? '<span class="rozet '+(acikEl.patlak?'':'hazir')+'">'+acikEl.toplam+(acikEl.patlak?' ✖':'')+'</span>'
-      : masa.sira===u && masa.faz==='el' ? '<span class="rozet sira">SIRADA</span>'
-      : dz.hazir ? '<span class="rozet hazir">'+(dz.sonHamle==='sure'?'SÜRE':'HAZIR')+'</span>'
-      : dz.sonHamle==='pas' ? '<span class="rozet">PAS</span>' : '<span class="rozet">'+adet+' kart</span>';
-    return '<div class="koltuk'+(masa.sira===u?' aktif':'')+(u===uid?' ben':'')+(acikEl&&acikEl.patlak?' patlakGoster':'')+
-      '" style="left:'+x+'%;top:'+y+'%"><div class="kartcik">'+kartlar+'</div>'+
-      '<div class="ad">'+kacir(o.ad)+(o.cevrimici===false?' ◌':'')+'</div><div class="kasa">'+imzali(o.kasa)+'</div>'+rozet+'</div>';
-  }).join('');
+      : (masa.sira===u && masa.faz==='el') ? '<span class="rozet sira">SIRADA</span>'
+      : dz.hazir ? '<span class="rozet hazir">'+(dz.sonHamle==='sure'?'SÜRE DOLDU':'✓ HAZIR')+'</span>'
+      : dz.sonHamle==='al' ? '<span class="rozet">KART ALDI</span>'
+      : dz.sonHamle==='pas' ? '<span class="rozet">PAS GEÇTİ</span>'
+      : adet ? '<span class="rozet">'+adet+' kart</span>' : '<span class="rozet">—</span>';
+    const bilgi='<div class="ad">'+kacir(o.ad)+(o.cevrimici===false?' ◌':'')+'</div>'+
+      '<div class="kasa">'+imzali(o.kasa)+'</div>'+rozet;
+    const sinif='koltuk'+(masa.sira===u?' aktif':'')+(u===uid?' ben':'')+
+      (acikEl&&acikEl.patlak?' patlakGoster':'');
+    sonAdet[u]=adet;
+
+    const el=cocuklar[i]; if(!el) return;
+    const kartKap=el.children&&el.children[0], bilgiKap=el.children&&el.children[1];
+    if(kartKap && kartOnbellek[u]!==kartlar){ kartOnbellek[u]=kartlar; kartKap.innerHTML=kartlar; }
+    if(bilgiKap && bilgiOnbellek[u]!==bilgi){ bilgiOnbellek[u]=bilgi; bilgiKap.innerHTML=bilgi; }
+    if(el.className!==sinif) el.className=sinif;
+  });
 }
 
 /* --- kendi elim --- */
@@ -839,15 +866,20 @@ function elimCiz(){
   const kartlar = (elim&&elim.kartlar)||[];
   const asSec = (elim&&elim.asSec)||{};
   if(izleyici){
-    $('kartlarim').innerHTML='<p class="altnot">İzleyicisin — eller açılınca göreceksin.</p>';
+    if(sonElimHtml!=='izleyici'){ sonElimHtml='izleyici';
+      $('kartlarim').innerHTML='<p class="altnot">İzleyicisin — eller açılınca göreceksin.</p>'; }
     $('elimToplam').textContent='—';$('elimAltnot').textContent='izleyici modu';return;
   }
-  $('kartlarim').innerHTML = kartlar.map((k,i)=>{
-    if(k.r!=='A') return kartYuz(k);
+  const yeniKart = kartlar.length>sonKartSayim;
+  const kartHtml = kartlar.map((k,i)=>{
+    const ekS = (yeniKart && i===kartlar.length-1) ? 'yeni' : '';
+    if(k.r!=='A') return kartYuz(k,'',ekS);
     // As kartının TAMAMI dokunmatik: küçük şeride nişan almaya gerek yok
     const etiket='<span class="asSec">'+((asSec[i]||11)===11?'11 ▸ 1':'1 ▸ 11')+'</span>';
-    return kartYuz(k, etiket, 'asKart" data-i="'+i);
+    return kartYuz(k, etiket, ('asKart '+ekS).trim()+'" data-i="'+i);
   }).join('') || '<p class="altnot" style="opacity:.6">kart bekleniyor…</p>';
+  sonKartSayim=kartlar.length;
+  if(sonElimHtml!==kartHtml){ sonElimHtml=kartHtml; $('kartlarim').innerHTML=kartHtml; }
   const t = toplamHesap(kartlar, asSec);
   const kp = kesinPatlak(kartlar);
   $('elimToplam').textContent = kartlar.length ? t : '—';
