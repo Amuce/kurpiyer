@@ -211,7 +211,7 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 <div class="sarma">
 
   <div class="ust">
-    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v10</small></div>
+    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v10.1</small></div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="kod gizli" id="izleyiciRozet" title="izleyen kişi sayısı">👀 <b id="izleyiciSayi">0</b></div>
       <div class="kod gizli" id="kodRozet">ODA<b id="odaKodu">----</b></div>
@@ -1496,6 +1496,14 @@ async function eliDagitIc(){
 async function geriSayimBaslat(){
   sayimCalisiyor=true;
   try{
+    /* ESKİ HÂLİ: önceki elin kartları (hem kendi ELİN panelin hem masadaki
+       herkesin açık kartları/rozet toplamları) yalnızca dağıtım BİTİNCE
+       temizleniyordu — yani 3-2-1 sayılırken herkes hâlâ bir önceki elin
+       kartlarını/skorunu görüyordu. Artık sayaç başlar başlamaz temizleniyor,
+       böylece geri sayım gerçekten "boş masa"da oluyor. */
+    const oyn=(await get(yol('oyuncular'))).val()||{};
+    for(const u of sunucuListesi(oyn)) await set(yol('eller',u),null).catch(()=>{});
+    await set(yol('acik'),null).catch(()=>{});
     await update(yol('masa'),{faz:'sayim',geriSayim:3});
     for(const s of [2,1]){ await new Promise(r=>setTimeout(r,900)); await update(yol('masa'),{geriSayim:s}); }
     await new Promise(r=>setTimeout(r,900));
