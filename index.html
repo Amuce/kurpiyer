@@ -304,6 +304,8 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
       <div id="koltuklar"></div>
     </div>
 
+    <p class="not" id="sonOlay" style="min-height:15px"></p>
+
     <div class="sayac-kutu gizli" id="sayacKutu">
       <div class="sayac-ust"><span class="kim" id="sayacKim">SIRA</span><span class="sn" id="sayacSn">45</span></div>
       <div class="sayac-cubuk"><i id="sayacCubuk" style="width:100%"></i></div>
@@ -325,7 +327,7 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
       <button class="dugme bos" id="pasBtn" disabled style="margin:0;font-size:15px;font-family:'Antonio',sans-serif;letter-spacing:.08em;padding:14px">Bu Turda Almam</button>
     </div>
     <button class="dugme yesil" id="hazirBtn" disabled>✓ Kartlarım Hazır</button>
-    <button class="dugme gizli" id="yeniElBtn">Sonraki Eli Dağıt</button>
+    <button class="dugme bos gizli" id="durdurBtn">⏸ Turu Durdur</button>
     <p class="durum" id="oyunDurum"></p>
 
     <div class="kutu">
@@ -409,7 +411,7 @@ const SURUM='s9';
    AYAR DÜĞMELERİ — davranışı buradan değiştirebilirsin
    ================================================================ */
 const PERDE_SURESI   = 2500;    // kazanan ekranı kaç ms sonra kendi kapansın
-const EL_SONU_OTOMAT = 6000;    // el sonunda kimse basmazsa kaç ms sonra yeni el
+const EL_SONU_OTOMAT = 3000;    // el sonunda kaç ms sonra kurpiyer otomatik yeni eli dağıtsın (yönetici "Durdur" ile bekletebilir)
 const SURE_DOLUNCA   = 'hazir'; // 'hazir' = süresi dolan otomatik hazır sayılır (el devam eder)
                                 // 'boz'   = eski davranış: el bozulur, yeniden dağıtılır
 const CANLILIK_MS    = 20000;   // "buradayım" damgası tazeleme aralığı
@@ -767,9 +769,9 @@ function ciz(){
   const durum=(acik&&acik.durum)||{};
   const benimDurum=durum[uid]||{};
   const sıradaBenMi = masa.sira===uid && masa.faz==='el' && !izleyici && !benimDurum.hazir;
-  $('kartAlBtn').disabled=!sıradaBenMi;
-  $('pasBtn').disabled=!sıradaBenMi;
-  $('hazirBtn').disabled=!(masa.faz==='el' && !izleyici && !benimDurum.hazir && (elim&&elim.kartlar));
+  $('kartAlBtn').disabled=!sıradaBenMi || hamleBekliyor;
+  $('pasBtn').disabled=!sıradaBenMi || hamleBekliyor;
+  $('hazirBtn').disabled=!(masa.faz==='el' && !izleyici && !benimDurum.hazir && (elim&&elim.kartlar)) || hamleBekliyor;
   $('atlandiKutu').classList.toggle('gizli', !(benimDurum.hazir && masa.faz==='el'));
   $('atlandiKutu').textContent = benimDurum.sonHamle==='sure'
     ? 'SÜREN DOLDU — OTOMATİK HAZIR SAYILDIN' : 'HAZIRSIN — DİĞER OYUNCULAR BEKLENİYOR';
@@ -779,15 +781,18 @@ function ciz(){
   $('ortaBilgi').innerHTML = masa.faz==='sayim'
     ? '<span class="sayim">'+kacir(masa.geriSayim||'')+'</span>'
     : 'TUR <b>'+masa.tur+'/'+masa.hedef+'</b><br>BAHİS <b>'+masa.bahis+' ₺</b><br>ORTADA <b>'+(masa.bahis*Math.max(0,oyn.length-1))+' ₺</b>';
-  $('oyunDurum').textContent = masa.faz==='elSonu' ? (masa.sonMesaj||'')
+  $('oyunDurum').textContent = masa.faz==='elSonu'
+    ? (masa.sonMesaj||'') + (masa.duraklatildi ? ' — Yönetici turu durdurdu, bekleniyor…' : '')
     : izleyici ? (siradaki?kacir(siradaki)+' oynuyor…':'')
     : sıradaBenMi ? 'Sıra sende — kart al, pas geç ya da hazır ol.'
     : benimDurum.hazir ? 'Hazırsın. Diğerleri bekleniyor.'
     : siradaki ? kacir(siradaki)+' oynuyor…' : '';
 
   const kurucu = uid===masa.sahip;
-  $('yeniElBtn').classList.toggle('gizli', !(kurucu && masa.faz==='elSonu'));
-  $('yeniElBtn').textContent = masa.sonEl ? 'Oyun Sonucunu Göster' : 'Sonraki Eli Dağıt';
+  $('durdurBtn').classList.toggle('gizli', !(kurucu && masa.faz==='elSonu'));
+  $('durdurBtn').textContent = masa.duraklatildi ? '▶ Devam Et' : '⏸ Turu Durdur';
+  $('durdurBtn').classList.toggle('bos', !masa.duraklatildi);
+  $('durdurBtn').classList.toggle('yesil', !!masa.duraklatildi);
   $('bitirBtn').classList.toggle('gizli', !kurucu);
   $('kapatBtn').classList.toggle('gizli', !kurucu);
   $('sifirlaBtn').classList.toggle('gizli', !kurucu);
@@ -905,11 +910,39 @@ function skorCiz(oyn){
     '<span class="kasa '+(o.kasa>0?'arti':o.kasa<0?'eksi':'notr')+'">'+imzali(o.kasa)+'</span></div>').join('');
 }
 
-/* ---------- oyuncu hamleleri ---------- */
-const istek = tip => { $('kartAlBtn').disabled=true;$('pasBtn').disabled=true;$('hazirBtn').disabled=true;
-  Promise.resolve(push(yol('istekler'),{uid,tip,ts:Date.now()}))
-    .catch(e=>{ console.error('istek yollanamadı',e);
-      $('oyunDurum').textContent='Bağlantı sorunu — hamlen gönderilemedi, tekrar dene.'; ciz(); }); };
+/* ---------- oyuncu hamleleri ----------
+   ESKİ HÂLİ: butonlar tıklanınca elle disabled=true yapılıyordu, ama az sonra gelen
+   herhangi bir Firebase güncellemesi ciz()'i tetikleyip butonu (istek henüz kurpiyer
+   tarafından işlenmeden) tekrar aktif hâle getiriyordu. Yavaş bağlantıda oyuncu ikinci
+   kez basınca AYNI hamle için iki istek gidiyor: sıra kendine dönmüşse (mesela son
+   bekleyen oyuncu oysa) her iki istek de geçerli sayılıp 2 kart geliyordu; sıra
+   ilerlemişse ikinci istek sessizce iptal olup hiç kart gelmemiş gibi görünüyordu.
+   YENİ HÂLİ: istek kurpiyer tarafından silinene (işlenene) ya da 8 sn geçene kadar
+   hamleBekliyor bayrağı true kalır; ciz() de dahil hiçbir yer butonları bu süre
+   içinde tekrar aktif etmez. */
+let hamleBekliyor=false, hamleDinleyici=null;
+function istek(tip){
+  if(hamleBekliyor) return;
+  hamleBekliyor=true;
+  $('kartAlBtn').disabled=true;$('pasBtn').disabled=true;$('hazirBtn').disabled=true;
+  const hamleZamanAsimi=setTimeout(()=>bitir(),8000);
+  function bitir(){
+    if(!hamleBekliyor) return;
+    hamleBekliyor=false; clearTimeout(hamleZamanAsimi);
+    if(hamleDinleyici){ hamleDinleyici(); hamleDinleyici=null; }
+    ciz();
+  }
+  const r=push(yol('istekler'));
+  // Dinleyici, set() sunucudan onay alana KADAR bağlanmaz: yoksa "istek henüz
+  // yazılmadan önceki boş değer" ilk bildirimde bitir()'i erken tetikleyip kilidi
+  // anında açabiliyordu (tam da düzeltilmek istenen yarış durumunun aynısı).
+  Promise.resolve(set(r,{uid,tip,ts:Date.now()})).then(()=>{
+    if(!hamleBekliyor) return;         // bu arada zaman aşımına uğramış olabilir
+    hamleDinleyici=onValue(r,s=>{ if(s.val()===null) bitir(); });
+  }).catch(e=>{ console.error('istek yollanamadı',e);
+    bitir();
+    $('oyunDurum').textContent='Bağlantı sorunu — hamlen gönderilemedi, tekrar dene.'; });
+}
 $('kartAlBtn').addEventListener('click',gv(()=>istek('al')));
 $('pasBtn').addEventListener('click',gv(()=>istek('pas')));
 $('hazirBtn').addEventListener('click',gv(()=>istek('hazir')));
@@ -988,6 +1021,7 @@ async function kurtarmaKontrol(){
     if(f==='elSonu'){
       // damga yoksa "çok eski" sanıp kazanan ekranını atlamasın
       if(!masa.elSonuTs){ await update(yol('masa'),{elSonuTs:Date.now()}); return; }
+      if(masa.duraklatildi) return;         // yönetici turu durdurdu, otomatik dağıtım bekletiliyor
       if(Date.now()-masa.elSonuTs < EL_SONU_OTOMAT) return;
       if(masa.sonEl){ await update(yol('masa'),{faz:'bitti'}); return; }
       const oyn=(await get(yol('oyuncular'))).val()||{};
@@ -1370,7 +1404,7 @@ async function eliDagitIc(){
   await set(yol('gizli','deste'),deste);
   await set(yol('acik'),{durum,eller:null});
   await update(yol('masa'),{faz:'el',sira:liste[0],sonMesaj:null,el:(m0.el||0)+1,
-    sonTarih:Date.now()+SURE_MS, bozuk:null, elSonuTs:null});
+    sonTarih:Date.now()+SURE_MS, bozuk:null, elSonuTs:null, duraklatildi:null});
   sistem('Kurpiyer eli dağıttı.');
 }
 
@@ -1383,12 +1417,14 @@ async function geriSayimBaslat(){
     await eliDagit();
   } finally { sayimCalisiyor=false; }
 }
-$('yeniElBtn').addEventListener('click',gv(async()=>{
-  $('yeniElBtn').disabled=true;
-  try{
-    if(masa && masa.sonEl){ await update(yol('masa'),{faz:'bitti'}); return; }
-    await eliDagit();
-  } finally { $('yeniElBtn').disabled=false; }
+/* Yönetici artık kartları elle dağıtmıyor — bu otomatik oluyor (bkz. kurtarmaKontrol
+   / EL_SONU_OTOMAT). Yöneticinin tur geçişindeki tek yetkisi bu otomatik geçişi
+   geçici olarak durdurup devam ettirmek. */
+$('durdurBtn').addEventListener('click',gv(async()=>{
+  if(!masa || uid!==masa.sahip) return;
+  const yeni=!masa.duraklatildi;
+  await update(yol('masa'),{duraklatildi:yeni});
+  sistem(yeni ? benimAd+' turu durdurdu — otomatik dağıtım bekletiliyor.' : benimAd+' turu devam ettirdi.');
 }));
 $('bitirBtn').addEventListener('click',gv(async()=>{ if(confirm('Masa kapansın mı?')) await update(yol('masa'),{faz:'bitti'}); }));
 
@@ -1436,11 +1472,17 @@ $('mesajInput').addEventListener('keydown',gv(e=>{if(e.key==='Enter')yolla();}))
 $('laflar').addEventListener('click',gv(e=>{ if(e.target.tagName!=='BUTTON')return;
   Promise.resolve(push(yol('sohbet'),{ad:benimAd,metin:e.target.textContent,ts:Date.now()})).catch(()=>{}); }));
 function sohbetCiz(veri){
+  const liste=Object.values(veri||{}).sort((x,y)=>x.ts-y.ts);
   const a=$('sohbetAkis');
-  a.innerHTML=Object.values(veri||{}).sort((x,y)=>x.ts-y.ts).slice(-40).map(m=>m.sis
+  a.innerHTML=liste.slice(-40).map(m=>m.sis
     ? '<div class="mesaj sis">'+kacir(m.metin)+'</div>'
     : '<div class="mesaj"><b>'+kacir(m.ad)+'</b>'+kacir(m.metin)+'</div>').join('');
   a.scrollTop=a.scrollHeight;
+  // "Kurpiyer kartları dağıttı", "X yerden kart aldı" gibi önemli sistem mesajları
+  // oyun ekranını kaydırmadan görülsün diye masanın hemen altında da gösterilir.
+  for(let i=liste.length-1;i>=0;i--){
+    if(liste[i].sis){ $('sonOlay').textContent=liste[i].metin; break; }
+  }
 }
 
 /* ---------- sonuç + defter ---------- */
@@ -1538,7 +1580,7 @@ $('sifirlaBtn').addEventListener('click',gv(async()=>{
   await remove(yol('istekler')).catch(()=>{});
   await remove(yol('gizli')).catch(()=>{});
   await update(yol('masa'),{faz:'bekleme',tur:0,el:0,sira:null,sonTarih:null,koltuk:no,
-    sonMesaj:null,bozuk:null,sonEl:null,elSonuTs:null,sonSayilanEl:null,acilisTs:null});
+    sonMesaj:null,bozuk:null,sonEl:null,elSonuTs:null,sonSayilanEl:null,acilisTs:null,duraklatildi:null});
   sistem('Kurucu masayı sıfırladı — yeni oyun kurulacak.');
   sayimCalisiyor=false; kaydedildi=false; sonPerdeEl=-1;
 }));
