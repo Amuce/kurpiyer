@@ -211,7 +211,7 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 <div class="sarma">
 
   <div class="ust">
-    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v10.3</small></div>
+    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v10.4</small></div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="kod gizli" id="izleyiciRozet" title="izleyen kişi sayısı">👀 <b id="izleyiciSayi">0</b></div>
       <div class="kod gizli" id="kodRozet">ODA<b id="odaKodu">----</b></div>
@@ -320,6 +320,10 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
     </div>
 
     <p class="not" id="sonOlay" style="min-height:15px"></p>
+
+    <div class="laflar" id="hizliMesajlar" style="justify-content:center">
+      <button>⚡ Hızlı oyna</button><button>😩 Noluyor yaw!</button><button>🔥 Masa hızlı!</button>
+    </div>
 
     <div class="sayac-kutu gizli" id="sayacKutu">
       <div class="sayac-ust"><span class="kim" id="sayacKim">SIRA</span><span class="sn" id="sayacSn">45</span></div>
@@ -1567,8 +1571,12 @@ function yolla(){ const v=$('mesajInput').value.trim(); if(!v)return;
   $('mesajInput').value=''; }
 $('gonderBtn').addEventListener('click',gv(yolla));
 $('mesajInput').addEventListener('keydown',gv(e=>{if(e.key==='Enter')yolla();}));
-$('laflar').addEventListener('click',gv(e=>{ if(e.target.tagName!=='BUTTON')return;
-  Promise.resolve(push(yol('sohbet'),{uid,ad:benimAd,metin:e.target.textContent,ts:Date.now()})).catch(()=>{}); }));
+function lafGonder(e){ if(e.target.tagName!=='BUTTON')return;
+  Promise.resolve(push(yol('sohbet'),{uid,ad:benimAd,metin:e.target.textContent,ts:Date.now()})).catch(()=>{}); }
+$('laflar').addEventListener('click',gv(lafGonder));
+/* Masanın hemen altındaki hızlı mesaj düğmeleri: oyun akışı hızlanınca
+   "Mesajlar" kutusuna kadar kaydırmadan tek dokunuşla tepki verilebilsin. */
+$('hizliMesajlar').addEventListener('click',gv(lafGonder));
 /* "Kurpiyer kartları dağıttı", "X yerden kart aldı" gibi SİSTEM mesajları
    masanın hemen altında kısa süreliğine belirip kaybolur — sıra bilgisini
    (oyunDurum) kapatmaz. Oyuncuların yazdığı SIRADAN mesajlar burada değil,
