@@ -59,6 +59,8 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
   border:1px solid var(--cizgi);padding:11px 3px;cursor:pointer;width:100%}
 .secim button.secili{background:var(--cuha2);color:var(--ak);border-color:var(--altin)}
 .not{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--sis);line-height:1.65;margin-top:9px}
+#sonOlay{opacity:0;transition:opacity .3s ease}
+#sonOlay.gorunur{opacity:1}
 .durum{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--uyari);min-height:15px;margin-top:5px;line-height:1.5}
 .uyari{border:1px solid var(--kirmizi);background:rgba(184,74,62,.1);padding:11px;font-size:12.5px;line-height:1.5;margin-top:11px}
 
@@ -201,7 +203,7 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 <div class="sarma">
 
   <div class="ust">
-    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v5</small></div>
+    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v6</small></div>
     <div class="kod gizli" id="kodRozet">ODA<b id="odaKodu">----</b></div>
   </div>
 
@@ -1471,6 +1473,20 @@ $('gonderBtn').addEventListener('click',gv(yolla));
 $('mesajInput').addEventListener('keydown',gv(e=>{if(e.key==='Enter')yolla();}));
 $('laflar').addEventListener('click',gv(e=>{ if(e.target.tagName!=='BUTTON')return;
   Promise.resolve(push(yol('sohbet'),{ad:benimAd,metin:e.target.textContent,ts:Date.now()})).catch(()=>{}); }));
+/* "Kurpiyer kartları dağıttı", "X yerden kart aldı" gibi önemli sistem mesajları
+   oyun ekranını kaydırmadan görülsün diye masanın hemen altında kısa süreliğine
+   (yaklaşık 1 sn) belirip smooth şekilde kaybolur — ekranı kalıcı yazıyla boğmaz,
+   sıra bilgisini (oyunDurum) de kapatmaz. */
+let sonOlaySon='', sonOlayZamanlayici=null;
+function sonOlayGoster(metin){
+  if(!metin || metin===sonOlaySon) return;
+  sonOlaySon=metin;
+  const el=$('sonOlay');
+  el.textContent=metin;
+  el.classList.add('gorunur');
+  clearTimeout(sonOlayZamanlayici);
+  sonOlayZamanlayici=setTimeout(()=>el.classList.remove('gorunur'),1300);
+}
 function sohbetCiz(veri){
   const liste=Object.values(veri||{}).sort((x,y)=>x.ts-y.ts);
   const a=$('sohbetAkis');
@@ -1478,10 +1494,8 @@ function sohbetCiz(veri){
     ? '<div class="mesaj sis">'+kacir(m.metin)+'</div>'
     : '<div class="mesaj"><b>'+kacir(m.ad)+'</b>'+kacir(m.metin)+'</div>').join('');
   a.scrollTop=a.scrollHeight;
-  // "Kurpiyer kartları dağıttı", "X yerden kart aldı" gibi önemli sistem mesajları
-  // oyun ekranını kaydırmadan görülsün diye masanın hemen altında da gösterilir.
   for(let i=liste.length-1;i>=0;i--){
-    if(liste[i].sis){ $('sonOlay').textContent=liste[i].metin; break; }
+    if(liste[i].sis){ sonOlayGoster(liste[i].metin); break; }
   }
 }
 
