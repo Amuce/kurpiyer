@@ -103,6 +103,12 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
   display:inline-block;border:1px solid var(--cizgi2);color:var(--sis);white-space:nowrap}
 .koltuk .rozet.hazir{color:var(--yesil);border-color:var(--yesil);background:rgba(110,155,118,.12)}
 .koltuk .rozet.sira{color:var(--altin2);border-color:var(--altin2);background:rgba(200,168,99,.12)}
+.koltuk .baloncuk{position:absolute;bottom:100%;left:50%;transform:translateX(-50%) translateY(4px);
+  margin-bottom:4px;max-width:120px;min-width:max-content;background:var(--zemin2);border:1px solid var(--altin);
+  color:var(--ak);font-family:'Barlow',sans-serif;font-size:11.5px;line-height:1.3;padding:5px 8px;
+  border-radius:9px;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;
+  white-space:normal;word-break:break-word;z-index:6;text-align:center}
+.koltuk .baloncuk.gorunur{opacity:1;transform:translateX(-50%) translateY(0)}
 .koltuk.aktif .ad{color:var(--altin2)}
 .koltuk.aktif::before{content:"";position:absolute;inset:-7px -5px;border:1px solid var(--altin2);opacity:.55}
 .koltuk.ben .ad::after{content:" (sen)";font-size:9px;color:var(--sis)}
@@ -205,8 +211,11 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 <div class="sarma">
 
   <div class="ust">
-    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v8</small></div>
-    <div class="kod gizli" id="kodRozet">ODA<b id="odaKodu">----</b></div>
+    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v10</small></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="kod gizli" id="izleyiciRozet" title="izleyen kişi sayısı">👀 <b id="izleyiciSayi">0</b></div>
+      <div class="kod gizli" id="kodRozet">ODA<b id="odaKodu">----</b></div>
+    </div>
   </div>
 
   <div class="uyari gizli" id="ayarUyari">
@@ -330,7 +339,7 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 
     <div class="ikili" style="margin-top:10px">
       <button class="dugme" id="kartAlBtn" disabled>Kart Al</button>
-      <button class="dugme bos" id="pasBtn" disabled style="margin:0;font-size:15px;font-family:'Antonio',sans-serif;letter-spacing:.08em;padding:14px">Bu Turda Almam</button>
+      <button class="dugme bos" id="pasBtn" disabled style="margin:0;font-size:15px;font-family:'Antonio',sans-serif;letter-spacing:.08em;padding:14px">Pas Geç</button>
     </div>
     <button class="dugme yesil" id="hazirBtn" disabled>✓ Kartlarım Hazır</button>
     <button class="dugme bos gizli" id="durdurBtn">⏸ Turu Durdur</button>
@@ -744,6 +753,9 @@ function ciz(){
     ekran('ekGiris'); return;
   }
   const oyn=oyuncuListesi();
+  const izleyiciSayisi=Object.values(oyuncular||{}).filter(o=>o.izleyici && !o.ayrildi).length;
+  $('izleyiciRozet').classList.toggle('gizli', !izleyiciSayisi);
+  $('izleyiciSayi').textContent=izleyiciSayisi;
 
   /* --- bekleme --- */
   if(masa.faz==='bekleme'){
@@ -872,7 +884,7 @@ function masaCiz(oyn){
       const kayma=((i-merkez)+n)%n, aci=kayma*2*Math.PI/n, yaricap=n<=2?32:37;
       return '<div class="koltuk" data-u="'+u+'" style="left:'+(50+yaricap*Math.sin(aci))+
              '%;top:'+(50+yaricap*Math.cos(aci))+'%">'+
-             '<div class="kartcik"></div><div class="bilgiKol"></div></div>';
+             '<div class="kartcik"></div><div class="bilgiKol"></div><div class="baloncuk"></div></div>';
     }).join('');
   }
   const cocuklar = kap.children || [];
@@ -900,7 +912,9 @@ function masaCiz(oyn){
     sonAdet[u]=adet;
 
     const el=cocuklar[i]; if(!el) return;
-    const kartKap=el.children&&el.children[0], bilgiKap=el.children&&el.children[1];
+    // class adıyla seçiliyor (index'e güvenmek, şablona yeni bir eleman
+    // eklendiğinde isim/kart alanının yanlış kutuya yazılmasına yol açmıştı)
+    const kartKap=el.querySelector('.kartcik'), bilgiKap=el.querySelector('.bilgiKol');
     if(kartKap && kartOnbellek[u]!==kartlar){ kartOnbellek[u]=kartlar; kartKap.innerHTML=kartlar; }
     if(bilgiKap && bilgiOnbellek[u]!==bilgi){ bilgiOnbellek[u]=bilgi; bilgiKap.innerHTML=bilgi; }
     if(el.className!==sinif) el.className=sinif;
@@ -1230,6 +1244,11 @@ async function botOyna(bid){
 }
 
 /* ---------- KURPİYER (masa sahibinin cihazı) ---------- */
+/* İstek, kart gerçekten verilip sıra tamamen ilerletilene (ya da işlenemeyeceği
+   kesinleşene) KADAR kuyruktan silinmez. Oyuncunun butonu da (bkz. istek() /
+   hamleBekliyor) ancak istek kuyruktan silinince tekrar açılıyor — yani kart
+   dağıtılmadan ikinci kez basılamaz, "kart gelmedi" ya da "iki kart geldi"
+   durumu oluşmaz. */
 let isleniyor=false;
 async function istekleriIsle(hepsi){
   if(!kurpiyerMiyim()||!hepsi||isleniyor) return;
@@ -1239,7 +1258,6 @@ async function istekleriIsle(hepsi){
     if(!mm||mm.sahip!==uid) return;          // kurpiyerlik devredilmiş → karışma
     for(const [anahtar,ist] of Object.entries(hepsi).sort((a,b)=>a[1].ts-b[1].ts)){
       try{
-        await remove(yol('istekler',anahtar));
         const m=(await get(yol('masa'))).val();
         if(!m||m.faz!=='el') continue;
         const dz=(await get(yol('acik','durum',ist.uid))).val()||{};
@@ -1249,12 +1267,13 @@ async function istekleriIsle(hepsi){
           sistem((oyuncular[ist.uid]?.ad||'')+' kartlarım hazır dedi.');
           await siraIlerlet(ist.uid);
           continue; }
-        if(m.sira!==ist.uid) continue;
+        if(m.sira!==ist.uid) continue;        // sırası olmayan al/pas isteği yok sayılır
         if(ist.tip==='al') await kartVer(ist.uid);
         else { await update(yol('acik','durum',ist.uid),{sonHamle:'pas'});
           sistem((oyuncular[ist.uid]?.ad||'')+' bu turda kart almadı.'); }
         await siraIlerlet();
       }catch(e){ console.error('istek işlenemedi',ist&&ist.tip,e); }
+      finally{ await remove(yol('istekler',anahtar)).catch(()=>{}); }
     }
   } finally { isleniyor=false; }
 }
@@ -1321,7 +1340,16 @@ async function siraIlerletIc(ekstraHazir){
     if(!durum[aday]?.hazir){sonraki=aday;break;}
   }
   const hedefUid=sonraki||bekleyenler[0];
-  if(hedefUid!==m.sira) await new Promise(r=>setTimeout(r,SIRA_GECIS_MS));
+  /* Sırası gelmemiş biri "elim hazır" dediğinde (ekstraHazir, aktif oyuncunun
+     kendisi değilse) ve hedef hâlâ aktif oyuncuysa HİÇBİR ŞEY YAZMA: aktif
+     oyuncunun süresi/rozeti sıfırlanıp sırası "bozulmuş" gibi görünmesin —
+     elim hazır tamamen bağımsız kalsın, kimsenin var olan sırasına dokunmasın.
+     Aktif oyuncunun KENDİ hamlesiyle (kart al/pas/hazır) buraya gelinmişse,
+     hedef yine kendisi çıksa bile (herkes hazırsa tek karar verici o kalır)
+     süresi tazelenir — bu, gerçek bir yeni karar anıdır. */
+  const disaridanHazir = ekstraHazir && ekstraHazir!==m.sira;
+  if(disaridanHazir && hedefUid===m.sira) return;
+  if(hedefUid!==m.sira) await new Promise(r=>setTimeout(r,SIRA_GECIS_MS));   // oyuncular kimin ne yaptığını görebilsin
   // çevrimdışı oyuncu bütün masayı 45 sn bekletmesin
   const sure=(guncelOyn[hedefUid]&&guncelOyn[hedefUid].cevrimici===false)?KISA_SURE_MS:SURE_MS;
   await update(yol('masa'),{sira:hedefUid, sonTarih: Date.now()+sure});
@@ -1522,16 +1550,17 @@ $('kopyalaBtn').addEventListener('click',gv(async()=>{
 /* ---------- sohbet ---------- */
 function sistem(metin){ if(oda) Promise.resolve(push(yol('sohbet'),{sis:true,metin,ts:Date.now()})).catch(()=>{}); }
 function yolla(){ const v=$('mesajInput').value.trim(); if(!v)return;
-  Promise.resolve(push(yol('sohbet'),{ad:benimAd,metin:v,ts:Date.now()})).catch(()=>{});
+  Promise.resolve(push(yol('sohbet'),{uid,ad:benimAd,metin:v,ts:Date.now()})).catch(()=>{});
   $('mesajInput').value=''; }
 $('gonderBtn').addEventListener('click',gv(yolla));
 $('mesajInput').addEventListener('keydown',gv(e=>{if(e.key==='Enter')yolla();}));
 $('laflar').addEventListener('click',gv(e=>{ if(e.target.tagName!=='BUTTON')return;
-  Promise.resolve(push(yol('sohbet'),{ad:benimAd,metin:e.target.textContent,ts:Date.now()})).catch(()=>{}); }));
-/* "Kurpiyer kartları dağıttı", "X yerden kart aldı" gibi sistem mesajları VE
-   sohbete yazılan sıradan mesajlar, oyun ekranını kaydırmadan görülsün diye
-   masanın hemen altında kısa süreliğine (~1.5-2 sn) belirip smooth şekilde
-   kaybolur — ekranı kalıcı yazıyla boğmaz, sıra bilgisini (oyunDurum) kapatmaz. */
+  Promise.resolve(push(yol('sohbet'),{uid,ad:benimAd,metin:e.target.textContent,ts:Date.now()})).catch(()=>{}); }));
+/* "Kurpiyer kartları dağıttı", "X yerden kart aldı" gibi SİSTEM mesajları
+   masanın hemen altında kısa süreliğine belirip kaybolur — sıra bilgisini
+   (oyunDurum) kapatmaz. Oyuncuların yazdığı SIRADAN mesajlar burada değil,
+   doğrudan o oyuncunun masadaki koltuğunun üstünde bir konuşma baloncuğu
+   olarak ~2 sn görünüp kayboluyor; uzun mesajlar kısaltılıp "…" ile gösterilir. */
 let sonOlaySon='', sonOlayZamanlayici=null;
 function sonOlayGoster(metin){
   if(!metin || metin===sonOlaySon) return;
@@ -1540,7 +1569,25 @@ function sonOlayGoster(metin){
   el.textContent=metin;
   el.classList.add('gorunur');
   clearTimeout(sonOlayZamanlayici);
-  sonOlayZamanlayici=setTimeout(()=>el.classList.remove('gorunur'),1800);
+  sonOlayZamanlayici=setTimeout(()=>el.classList.remove('gorunur'),1300);
+}
+function kisalt(metin, maxUzunluk){
+  if(!metin || metin.length<=maxUzunluk) return metin;
+  let kesik=metin.slice(0,maxUzunluk);
+  const sonBosluk=kesik.lastIndexOf(' ');
+  if(sonBosluk>maxUzunluk*0.5) kesik=kesik.slice(0,sonBosluk);
+  return kesik+'…';
+}
+let sonBaloncukTs=0;
+function mesajBaloncuguGoster(gonderenUid, metin, ts){
+  if(!gonderenUid || ts===sonBaloncukTs) return;
+  sonBaloncukTs=ts;
+  const koltuk=document.querySelector('.koltuk[data-u="'+CSS.escape(gonderenUid)+'"] .baloncuk');
+  if(!koltuk) return;                     // izleyici yazdıysa ya da koltuk henüz çizilmediyse sessizce geç
+  koltuk.textContent=kisalt(metin, 26);
+  koltuk.classList.add('gorunur');
+  clearTimeout(koltuk._zamanlayici);
+  koltuk._zamanlayici=setTimeout(()=>koltuk.classList.remove('gorunur'),2000);
 }
 function sohbetCiz(veri){
   const liste=Object.values(veri||{}).sort((x,y)=>x.ts-y.ts);
@@ -1550,7 +1597,9 @@ function sohbetCiz(veri){
     : '<div class="mesaj"><b>'+kacir(m.ad)+'</b>'+kacir(m.metin)+'</div>').join('');
   a.scrollTop=a.scrollHeight;
   const son=liste[liste.length-1];
-  if(son) sonOlayGoster(son.sis ? son.metin : (son.ad+': '+son.metin));
+  if(!son) return;
+  if(son.sis) sonOlayGoster(son.metin);
+  else mesajBaloncuguGoster(son.uid, son.metin, son.ts);
 }
 
 /* ---------- sonuç + defter ---------- */
