@@ -211,7 +211,7 @@ input:focus{outline:1px solid var(--altin);outline-offset:1px}
 <div class="sarma">
 
   <div class="ust">
-    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v10.1</small></div>
+    <div class="logo">Yirmi Bir<small id="ustAlt">ONLINE MASA v10.2</small></div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="kod gizli" id="izleyiciRozet" title="izleyen kişi sayısı">👀 <b id="izleyiciSayi">0</b></div>
       <div class="kod gizli" id="kodRozet">ODA<b id="odaKodu">----</b></div>
@@ -898,10 +898,14 @@ function masaCiz(oyn){
       ? (acikEl.kartlar||[]).map(k=>'<span class="mini acikKart'+(k.k?' kir':'')+'">'+k.r+'</span>').join('')
       : Array.from({length:adet},(x,j)=>
           '<span class="mini'+(yeniGeldi&&j===adet-1?' yeni':'')+'"></span>').join('');
+    /* "hazır" her zaman "sırada" rozetinden ÖNCELİKLİ gösterilir: sıra devri
+       ~1 sn geciktiği için, hazır diyen oyuncuda masa.sira bir an daha ona
+       işaret ediyor olabilir — bu sırada rozet hâlâ "SIRADA" görünürse hazır
+       demesi kabul edilmemiş gibi yanlış bir izlenim veriyordu. */
     const rozet = acikEl
       ? '<span class="rozet '+(acikEl.patlak?'':'hazir')+'">'+acikEl.toplam+(acikEl.patlak?' ✖':'')+'</span>'
-      : (masa.sira===u && masa.faz==='el') ? '<span class="rozet sira">SIRADA</span>'
       : dz.hazir ? '<span class="rozet hazir">'+(dz.sonHamle==='sure'?'SÜRE DOLDU':'✓ HAZIR')+'</span>'
+      : (masa.sira===u && masa.faz==='el') ? '<span class="rozet sira">SIRADA</span>'
       : dz.sonHamle==='al' ? '<span class="rozet">KART ALDI</span>'
       : dz.sonHamle==='pas' ? '<span class="rozet">PAS GEÇTİ</span>'
       : adet ? '<span class="rozet">'+adet+' kart</span>' : '<span class="rozet">—</span>';
@@ -1333,6 +1337,17 @@ async function siraIlerletIc(ekstraHazir){
   if(!liste.length) return;
   const bekleyenler=liste.filter(u=>!durum[u]?.hazir);
   if(!bekleyenler.length){ await eliAc(); return; }
+  /* Sırası gelmemiş biri "elim hazır" dediğinde (ekstraHazir, aktif oyuncunun
+     kendisi değilse) sıraya HİÇ dokunma. ESKİ HÂLİ yalnızca "hedef hâlâ aktif
+     oyuncuyla aynı çıkarsa" durumunu koruyordu; ama 3+ oyunculu masada "sıradaki
+     hazır olmayanı bul" araması aktif oyuncu DIŞINDA başka bir bekleyen oyuncuyu
+     bulabiliyordu — o zaman kontrol atlanıp sıra, aktif oyuncu daha karar
+     vermeden başkasına ÇALINIYORDU (bildirilen hata tam olarak buydu: kullanıcı
+     hazır dedi ama kabul edilmemiş gibi göründü, çünkü sıra ondan başkasına
+     kaymıştı). Aktif oyuncu henüz hazır değilse (yukarıdaki bekleyenler
+     kontrolünden geçtiysek bu kesin), başkasının hazır demesi sıraya ASLA
+     dokunmamalı — bu yüzden hedefi hiç hesaplamadan burada duruyoruz. */
+  if(ekstraHazir && ekstraHazir!==m.sira) return;
   const simdiki=liste.indexOf(m.sira);
   let sonraki=null;
   for(let adim=1;adim<=liste.length;adim++){
@@ -1340,15 +1355,6 @@ async function siraIlerletIc(ekstraHazir){
     if(!durum[aday]?.hazir){sonraki=aday;break;}
   }
   const hedefUid=sonraki||bekleyenler[0];
-  /* Sırası gelmemiş biri "elim hazır" dediğinde (ekstraHazir, aktif oyuncunun
-     kendisi değilse) ve hedef hâlâ aktif oyuncuysa HİÇBİR ŞEY YAZMA: aktif
-     oyuncunun süresi/rozeti sıfırlanıp sırası "bozulmuş" gibi görünmesin —
-     elim hazır tamamen bağımsız kalsın, kimsenin var olan sırasına dokunmasın.
-     Aktif oyuncunun KENDİ hamlesiyle (kart al/pas/hazır) buraya gelinmişse,
-     hedef yine kendisi çıksa bile (herkes hazırsa tek karar verici o kalır)
-     süresi tazelenir — bu, gerçek bir yeni karar anıdır. */
-  const disaridanHazir = ekstraHazir && ekstraHazir!==m.sira;
-  if(disaridanHazir && hedefUid===m.sira) return;
   if(hedefUid!==m.sira) await new Promise(r=>setTimeout(r,SIRA_GECIS_MS));   // oyuncular kimin ne yaptığını görebilsin
   // çevrimdışı oyuncu bütün masayı 45 sn bekletmesin
   const sure=(guncelOyn[hedefUid]&&guncelOyn[hedefUid].cevrimici===false)?KISA_SURE_MS:SURE_MS;
